@@ -1,0 +1,10 @@
+version: '3'
+services:
+  monitor:
+    environment:
+      - CAMERA_URL=
+    image: 7bc6374b4323
+  tf:
+    environment:
+      - STREAM_URL=
+    image: 33518147fa7a
