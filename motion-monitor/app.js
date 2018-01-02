@@ -67,7 +67,6 @@ request
     index = null;
 
     res.on('data', function (body) {
-      console.log("BODY: " + body);
       data = body.toString('utf8');
 
       if (data.substring(0,2) == '--') {
