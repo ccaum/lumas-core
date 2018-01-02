@@ -56,12 +56,6 @@ function sendStatus(runningState) {
   });
 }
 
-/*function sendStart() {
-  sendStatus('start');
-}
-
-setTimeout(notifyHomeKit, 50000);*/
-
 request
   .get(process.env.CAMERA_MOTION_URL, options)
   .on('error', function(err) {
@@ -89,8 +83,6 @@ request
 
         if (action == 'Start') {
           sendStatus('start');
-        } else if (action == 'Stop') {
-          sendStatus('stop');
         }
       }
     })
