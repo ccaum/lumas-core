@@ -81,6 +81,7 @@ celerybeat-schedule
 
 # nodejs
 node_modules
+yarn.lock
 
 # virtualenv
 .venv/
@@ -104,3 +105,7 @@ rfcn_resnet101_coco_11_06_2017/
 ssd_inception_v2_coco_11_06_2017/
 ssd_mobilenet_v1_coco_11_06_2017/
 vgg16.npy
+
+# HomeKit persistance files
+homekit/persist
+

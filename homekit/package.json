@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "homebridge-camera-ffmpeg": "git+https://github.com/lucavb/homebridge-http-motion-sensor#1ee78c4ac9d5a921a41cfef46c7ada8e4b5a9f98"
+  }
+}

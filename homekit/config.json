@@ -1,0 +1,17 @@
+{
+  "bridge": {
+    "name": "Homebridge",
+      "username": "CC:22:4A:E3:CD:34",
+      "port": 51826,
+      "pin": "031-41-197"
+  },
+  "description": "Camera Person Alarm",
+  "accessories": [
+        {
+        "accessory": "http-motion-sensor",
+        "name": "Garage Camera Sensor",
+        "port": 8888,
+        "serial" : "E642011E3ECB"
+    }
+  ]
+}

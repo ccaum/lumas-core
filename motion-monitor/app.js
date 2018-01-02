@@ -1,6 +1,8 @@
 const request = require('request');
 const WebSocket = require('ws');
 const wss = new WebSocket.Server({ port: 8080 });
+var http = require('http');
+var shouldNotify = true
 
 const options = {
   auth: {
@@ -11,13 +13,54 @@ const options = {
   forever: true
 };
 
-
 wss.on('connection', function connection(ws) {
   ws.on('message', function incoming(message) {
-    obj = JSON.parse(message);
-    console.log("GOT JSON: " + obj.stringify);
+    console.log("Received: " + message);
+    processObjects(JSON.parse(message));
   });
 });
+
+function resetNotification() {
+  console.log("Resetting HomeKit notification timer");
+  shouldNotify = true;
+}
+
+function notifyHomeKit() {
+  if (shouldNotify) {
+    shouldNotify = false;
+
+    http.get("http://192.168.2.25:8888/", (resp) => {
+      resp.on('end', () => {
+        console.log("Notified HomeKit of presence of person");
+      });
+    });
+
+    // Do not notify again for another 10 minutes
+    setTimeout(resetNotification, 600000)
+  }
+}
+
+function processObjects(objects) {
+  objects.forEach(function(value) {
+    if (value['class'] == 'person') {
+      notifyHomeKit();
+    }
+  });
+}
+
+function sendStatus(runningState) {
+  http.get("http://tf:5000/" + runningState, (resp) => {
+    resp.on('end', () => {
+      console.log("Sent " + runningState + " to tensorflow");
+    });
+  });
+}
+
+/*function sendStart() {
+  sendStatus('start');
+}
+
+setTimeout(notifyHomeKit, 50000);*/
 
 request
   .get(process.env.CAMERA_MOTION_URL, options)
@@ -45,21 +88,9 @@ request
         index = indexString.split('=')[1]
 
         if (action == 'Start') {
-          wss.broadcast = function broadcast(data) {
-            wss.clients.forEach(function each(client) {
-              if (client.readyState === WebSocket.OPEN) {
-                client.send('start');
-              }
-            });
-          };
+          sendStatus('start');
         } else if (action == 'Stop') {
-          wss.broadcast = function broadcast(data) {
-            wss.clients.forEach(function each(client) {
-              if (client.readyState === WebSocket.OPEN) {
-                client.send('stop');
-              }
-            });
-          };
+          sendStatus('stop');
         }
       }
     })
