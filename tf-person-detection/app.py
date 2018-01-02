@@ -9,7 +9,6 @@ import sys
 import os
 import json
 import os
-import socket
 import sys
 
 # Global variables shared between threads
@@ -22,14 +21,13 @@ timer = None
 # Create the API endpoints
 app = Flask(__name__)
 
-def timer():
+def stopwatch():
     global process_feed
     global timer
 
     seconds = time.time() - timer
 
     while seconds <= 60:
-        sys.stderr.write("Elapsed seconds are: " + seconds)
         time.sleep(1)
         seconds = time.time() - timer
 
@@ -41,13 +39,14 @@ def timer():
 def start():
     global timer
     global process_feed
-    sys.stderr.write('Starting feed analysis\n')
+    print('Starting feed analysis')
+
+    timer = time.time()
 
     # There must not be threads running if timer == None
     if timer == None:
-        timer = time.time()
-        timerthread = Thread(target=timer)
-        timerthread.start()
+        stopwatchthread = Thread(target=stopwatch)
+        stopwatchthread.start()
 
     process_feed = True
     return "OK"
