@@ -39,12 +39,10 @@ def stopwatch():
 def start():
     global timer
     global process_feed
-    print('Starting feed analysis')
-
-    timer = time.time()
 
     # There must not be threads running if timer == None
     if timer == None:
+        timer = time.time()
         stopwatchthread = Thread(target=stopwatch)
         stopwatchthread.start()
 
@@ -56,8 +54,6 @@ def stop():
     return "OK"
 
 def tf():
-    sys.stderr.write("TF thread running\n")
-
     # Load the TensorFlow models into memory
     base_path = os.path.dirname(os.path.abspath(__file__))
     model_path = base_path + '/faster_rcnn_inception_v2_coco_2017_11_08'
@@ -115,7 +111,7 @@ def socket():
     while True:
         try:
             websocket.enableTrace(False)
-            ws = websocket.WebSocketApp("ws://monitor:8080/")
+            ws = websocket.WebSocketApp("ws://localhost:8080/")
             ws.run_forever()
         except Exception as err:
             sys.stderr.write("Could not connect to websocket: " + str(err) + ". Trying again in 1 second\n")
