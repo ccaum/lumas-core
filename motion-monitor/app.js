@@ -29,7 +29,7 @@ function notifyHomeKit() {
   if (shouldNotify) {
     shouldNotify = false;
 
-    http.get("http://192.168.2.25:8888/", (resp) => {
+    http.get("http://localhost:8888/", (resp) => {
       resp.on('end', () => {
         console.log("Notified HomeKit of presence of person");
       });
@@ -49,7 +49,7 @@ function processObjects(objects) {
 }
 
 function sendStatus(runningState) {
-  http.get("http://tf:5000/" + runningState, (resp) => {
+  http.get("http://localhost:5000/" + runningState, (resp) => {
     resp.on('end', () => {
       console.log("Sent " + runningState + " to tensorflow");
     });
