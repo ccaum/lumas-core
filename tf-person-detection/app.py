@@ -39,12 +39,10 @@ def stopwatch():
 def start():
     global timer
     global process_feed
-    print('Starting feed analysis')
-
-    timer = time.time()
 
     # There must not be threads running if timer == None
     if timer == None:
+        timer = time.time()
         stopwatchthread = Thread(target=stopwatch)
         stopwatchthread.start()
 
@@ -115,7 +113,7 @@ def socket():
     while True:
         try:
             websocket.enableTrace(False)
-            ws = websocket.WebSocketApp("ws://monitor:8080/")
+            ws = websocket.WebSocketApp("ws://localhost:8080/")
             ws.run_forever()
         except Exception as err:
             sys.stderr.write("Could not connect to websocket: " + str(err) + ". Trying again in 1 second\n")
