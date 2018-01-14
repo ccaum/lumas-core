@@ -54,8 +54,6 @@ def stop():
     return "OK"
 
 def tf():
-    sys.stderr.write("TF thread running\n")
-
     # Load the TensorFlow models into memory
     base_path = os.path.dirname(os.path.abspath(__file__))
     model_path = base_path + '/faster_rcnn_inception_v2_coco_2017_11_08'

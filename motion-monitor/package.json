@@ -1,0 +1,18 @@
+{
+  "name": "motion-monitor",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "dependencies": {
+    "agentkeepalive": "^3.3.0",
+    "keepalive": "^3.0.0",
+    "request": "^2.83.0",
+    "ws": "^3.3.3"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}
