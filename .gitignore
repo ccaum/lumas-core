@@ -82,6 +82,7 @@ celerybeat-schedule
 # nodejs
 node_modules
 yarn.lock
+package-lock.json
 
 # virtualenv
 .venv/
