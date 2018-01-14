@@ -104,8 +104,8 @@ faster_rcnn_resnet101_coco_11_06_2017/
 rfcn_resnet101_coco_11_06_2017/
 ssd_inception_v2_coco_11_06_2017/
 ssd_mobilenet_v1_coco_11_06_2017/
+tf-person-detection/faster_rcnn_inception_v2_coco_2017_11_08.tar.gz
 vgg16.npy
 
 # HomeKit persistance files
 homekit/persist
-
