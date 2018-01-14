@@ -1,6 +1,6 @@
 const request = require('request');
 const WebSocket = require('ws');
-const wss = new WebSocket.Server({ port: 8080 });
+const wss = new WebSocket.Server({ port: 8089 });
 var http = require('http');
 var shouldNotify = true
 

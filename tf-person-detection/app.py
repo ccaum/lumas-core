@@ -111,7 +111,7 @@ def socket():
     while True:
         try:
             websocket.enableTrace(False)
-            ws = websocket.WebSocketApp("ws://localhost:8080/")
+            ws = websocket.WebSocketApp("ws://localhost:8089/")
             ws.run_forever()
         except Exception as err:
             sys.stderr.write("Could not connect to websocket: " + str(err) + ". Trying again in 1 second\n")
