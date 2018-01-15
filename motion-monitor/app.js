@@ -95,9 +95,8 @@ request
     res.on('data', function (body) {
       data = body.toString('utf8');
 
-      logger.log('debug', 'Receeived response from camera API' + data);
-
       if (data.substring(0,2) == '--') {
+        logger.log('debug', 'Receeived response from camera: ' + data);
         lines = data.split('\r\n')
 
         codeString = lines[3].split(';')[0]
