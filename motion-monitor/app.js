@@ -51,7 +51,7 @@ function notifyHomeKit() {
 
     http.get("http://localhost:8888/", (resp) => {
       resp.on('end', () => {
-        console.log("Notified HomeKit of presence of person");
+        logger.log('info', 'Notified HomeKit of presence of person');
       });
     });
 
@@ -62,6 +62,7 @@ function notifyHomeKit() {
 
 function processObjects(objects) {
   objects.forEach(function(value) {
+    logger.log('info', 'Person detected');
     if (value['class'] == 'person') {
       notifyHomeKit();
     }
@@ -86,6 +87,7 @@ request
   })
   .on('close', function() {
     logger.log('info', "Connection to Camera closed");
+  })
   .on('response', function(res) {
     code = null;
     action = null;
