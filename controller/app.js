@@ -1,15 +1,26 @@
 const request = require('request');
 const WebSocket = require('ws');
+const async = require('async');
+const http = require('http');
+const fs = require('fs');
+const memfs = require('memfs');
+
+var shouldNotify = true
+var loglevel = process.env.LOG_LEVEL || 'info';
+var cameraSnapshot = null;
+var annotatedSnapshot = null;
+var snapshotData = null;
+var snapshotResetTimer = null;
+
+const snapshotClearTimer = setTimeout(() => {
+    snapshot = null;
+}, 2000);
 
 //Winston nodejs logger
 const { createLogger, format, transports } = require('winston');
 const { combine, timestamp, label, prettyPrint } = format;
 
 const wss = new WebSocket.Server({ port: 8089 });
-
-var http = require('http');
-var shouldNotify = true
-var loglevel = process.env.LOG_LEVEL || 'info';
 
 const logger = createLogger({
   level: loglevel,
@@ -24,7 +35,7 @@ const logger = createLogger({
   ]
 });
 
-const options = {
+const camera_options = {
   auth: {
     user: process.env.CAMERA_USER,
     pass: process.env.CAMERA_PASS,
@@ -33,9 +44,24 @@ const options = {
   forever: true
 };
 
+http.createServer(function (req, res) {
+  memfs.stat('/annotatedSnapshot.jpg', function(err, stats) {
+    var age = Date.now() - stats.mtimeMs;
+    logger.log("debug", "Annotated snapshot is " + age + "ms old");
+
+    //Only send the annotated snapshot if it's less than 10 seconds old
+    if (age < 10000) {
+      logger.log("debug", "Serving annotated camera snapshot");
+      memfs.createReadStream('/annotatedSnapshot.jpg').pipe(res);
+    } else {
+      logger.log("debug", "Serving cached camera snapshot");
+      memfs.createReadStream('/cameraSnapshot.jpg').pipe(res);
+    }
+  });
+}).listen(8090);
+
 wss.on('connection', function connection(ws) {
   ws.on('message', function incoming(message) {
-    logger.log('debug', 'Objects received: ' + message);
     processObjects(JSON.parse(message));
   });
 });
@@ -60,11 +86,57 @@ function notifyHomeKit() {
   }
 }
 
-function processObjects(objects) {
-  objects.forEach(function(value) {
-    logger.log('info', 'Person detected');
-    if (value['class'] == 'person') {
-      notifyHomeKit();
+function captureCameraSnapshot() {
+    var file = memfs.createWriteStream('/cameraSnapshot.jpg');
+
+    request
+      .get(process.env.CAMERA_SNAPSHOT_URL, { 
+        auth: {
+          user: process.env.CAMERA_USER,
+          pass: process.env.CAMERA_PASS,
+          sendImmediately: false
+        }
+      })
+      .on('response', function(response) {
+        if (response.statusCode == 401) {
+          logger.log('error', "Unauthorized to access camera snapshot API");
+        }
+      })
+      .on('error', function(err) {
+        logger.log('error', err);
+      })
+      .on('end', function() {
+        logger.log('debug', "Succesfully updated camera snapshot");
+      })
+      .pipe(file);
+}
+
+function processObjects(data) {
+  data['results'].forEach(function(value) {
+    logger.log('debug', "Object recieved: " + JSON.stringify(value));
+    if (value['class'] == 'car') {
+      snapshotData = [ value ];
+      snapshot = Buffer.from(data['img'], 'base64');
+
+      var file = memfs.createWriteStream('/annotatedSnapshot.jpg');
+      memfs.writeFileSync('/objectSnapshot.jpg', snapshot);
+
+      formData = {
+        parameters: JSON.stringify(snapshotData),
+        img: memfs.createReadStream('/objectSnapshot.jpg')
+      };
+
+      request.post({ url: 'http://localhost:8899/addboxes', formData: formData}, function() {})
+      .pipe(file)
+      .on('finish', function() {
+        logger.log('debug', "Done adding boxes to frame");
+        memfs.unlink('/objectSnapshot.jpg', function(err) {
+          if (err) {
+            logger.log('error', "Unable to delete temporary file objectSnapshot.jpg");
+          }
+        });
+        notifyHomeKit();
+      });
     }
   });
 }
@@ -78,7 +150,7 @@ function sendStatus(runningState) {
 }
 
 request
-  .get(process.env.CAMERA_MOTION_URL, options)
+  .get(process.env.CAMERA_MOTION_URL, camera_options)
   .on('aborted', function() {
     logger.log('error', "Connection to Camera aborted");
   })
@@ -115,3 +187,6 @@ request
       }
     })
   })
+
+// Cache a snapshot from the camera every 5 seconds
+setInterval(captureCameraSnapshot, 10000);

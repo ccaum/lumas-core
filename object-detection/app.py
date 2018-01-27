@@ -1,6 +1,6 @@
 from models import object_detection
 from threading import Thread
-from flask import Flask
+from flask import Flask, request
 import websocket
 import thread
 import time
@@ -10,6 +10,7 @@ import os
 import json
 import os
 import sys
+import base64
 
 # Global variables shared between threads
 frame = None
@@ -17,6 +18,14 @@ ret = None
 process_feed = False
 camera_open = False
 timer = None
+
+# Load the TensorFlow models into memory
+base_path = os.path.dirname(os.path.abspath(__file__))
+model_path = base_path + '/faster_rcnn_inception_v2_coco_2017_11_08'
+net = object_detection.Net(graph_fp='%s/frozen_inference_graph.pb' % model_path,
+    labels_fp='data/label.pbtxt',
+    num_classes=90,
+    threshold=0.6)
 
 # Create the API endpoints
 app = Flask(__name__)
@@ -31,14 +40,21 @@ def stopwatch():
         time.sleep(1)
         seconds = time.time() - timer
 
+    # Tell the TF thread to stop
+    #event.set()
+
     process_feed = False
     timer = None
-    sys.exit(0)
 
 @app.route('/start')
 def start():
     global timer
     global process_feed
+
+    #objects = request.args.get('objects')
+    #objects = objects.split(',')
+
+    #e = threading.Event()
 
     # There must not be threads running if timer == None
     if timer == None:
@@ -46,36 +62,32 @@ def start():
         stopwatchthread = Thread(target=stopwatch)
         stopwatchthread.start()
 
+    #tfthread = Thread(target=tf, args=[e,objects])
+    #tfthread.start()
+
     process_feed = True
     return "OK"
 
-@app.route('/stop')
-def stop():
-    return "OK"
-
 def tf():
-    # Load the TensorFlow models into memory
-    base_path = os.path.dirname(os.path.abspath(__file__))
-    model_path = base_path + '/faster_rcnn_inception_v2_coco_2017_11_08'
-    net = object_detection.Net(graph_fp='%s/frozen_inference_graph.pb' % model_path,
-        labels_fp='data/label.pbtxt',
-        num_classes=90,
-        threshold=0.6)
-
+    #while not e.isSet():
     while True:
-        if not process_feed:
-            time.sleep(0.1)
+        if camera_open:
+            if ret:
+                resize_frame = cv2.resize(frame, (720, 480))
+                results = net.predict(resize_frame)
+                jpg = cv2.imencode('.jpg', frame)[1]
+                encoded_frame = base64.b64encode(jpg)
+
+                results_hash = {
+                  'results': results,
+                  'img':     encoded_frame
+                }
+
+                json_string = json.dumps(results_hash)
+
+                ws.send(json_string)
         else:
-            if camera_open:
-                if ret:
-                    resize_frame = cv2.resize(frame, (720, 480))
-                    results = net.predict(img=resize_frame, display_img=resize_frame)
-                    json_string = json.dumps(results)
-
-                    ws.send(json_string)
-        time.sleep(0.1)
-
-    sys.stderr.write("TF thread closing\n")
+            time.sleep(0.1)
 
 def camera():
     global camera_open
@@ -102,8 +114,6 @@ def camera():
                 cap = None
             camera_open = False
             time.sleep(0.1)
-
-    sys.stderr.write("Camera thread closing")
 
 def socket():
     global ws

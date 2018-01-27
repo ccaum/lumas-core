@@ -5,10 +5,13 @@
   "main": "app.js",
   "dependencies": {
     "agentkeepalive": "^3.3.0",
+    "async": "^2.6.0",
     "keepalive": "^3.0.0",
+    "memfs": "^2.6.2",
+    "node-timers": "0.0.1",
     "request": "^2.83.0",
-    "ws": "^3.3.3",
-    "winston": "^3.0.0-rc0"
+    "winston": "^3.0.0-rc1",
+    "ws": "^3.3.3"
   },
   "devDependencies": {},
   "scripts": {
