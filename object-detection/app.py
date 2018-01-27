@@ -73,8 +73,7 @@ def tf():
     while True:
         if camera_open:
             if ret:
-                resize_frame = cv2.resize(frame, (720, 480))
-                results = net.predict(resize_frame)
+                results = net.predict(frame)
                 jpg = cv2.imencode('.jpg', frame)[1]
                 encoded_frame = base64.b64encode(jpg)
 
