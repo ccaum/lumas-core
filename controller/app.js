@@ -114,7 +114,7 @@ function captureCameraSnapshot() {
 function processObjects(data) {
   data['results'].forEach(function(value) {
     logger.log('debug', "Object recieved: " + JSON.stringify(value));
-    if (value['class'] == 'car') {
+    if (value['class'] == 'person') {
       snapshotData = [ value ];
       snapshot = Buffer.from(data['img'], 'base64');
 
