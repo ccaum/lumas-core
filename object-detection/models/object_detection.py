@@ -59,30 +59,6 @@ class Net:
                 tf.import_graph_def(od_graph_def, name='')
         tf.get_default_graph().finalize()
 
-    def _display(self, filtered_results, processed_img, display_img):
-        h, w, _ = processed_img.shape
-        h_dis, w_dis, _ = display_img.shape
-        ratio_h = h_dis / h
-        ratio_w = w_dis / w
-
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        font_scale = 1
-        font_color = (0, 255, 0)
-        line_type = 2
-        offset = 20
-        for res in filtered_results:
-            y1, x1, y2, x2 = res["bb_o"]
-            y1, y2 = y1 * ratio_h, y2 * ratio_h
-            x1, x2 = x1 * ratio_w, x2 * ratio_w
-            cv2.rectangle(display_img, (x1, y1), (x2, y2), (255, 0, 0), 2)
-            cv2.putText(display_img, res["class"],
-                        (x1 + offset, y1 - offset),
-                        font,
-                        font_scale,
-                        font_color,
-                        line_type)
-        cv2.imshow('img', display_img)
-
     def _init_predictor(self):
         tf_config = tf.ConfigProto(device_count={'gpu': 0}, log_device_placement=False)
         tf_config.gpu_options.allow_growth = True
@@ -94,7 +70,7 @@ class Net:
             self.classes = self.graph.get_tensor_by_name('detection_classes:0')
             self.num_detections = self.graph.get_tensor_by_name('num_detections:0')
 
-    def predict(self, img, display_img):
+    def predict(self, img):
         self.in_progress = True
 
         with self.graph.as_default():
