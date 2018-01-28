@@ -45,14 +45,21 @@ const camera_options = {
 };
 
 http.createServer(function (req, res) {
-  memfs.stat('/annotatedSnapshot.jpg', function(err, stats) {
-    var age = Date.now() - stats.mtimeMs;
-    logger.log("debug", "Annotated snapshot is " + age + "ms old");
+  var age;
 
-    //Only send the annotated snapshot if it's less than 10 seconds old
-    if (age < 10000) {
-      logger.log("debug", "Serving annotated camera snapshot");
-      memfs.createReadStream('/annotatedSnapshot.jpg').pipe(res);
+  memfs.stat('/annotatedSnapshot.jpg', function(err, stats) {
+    if (stats) {
+      age = Date.now() - stats.mtimeMs;
+      logger.log("debug", "Annotated snapshot is " + age + "ms old");
+
+      //Only send the annotated snapshot if it's less than 10 seconds old
+      if (age < 10000) {
+        logger.log("debug", "Serving annotated camera snapshot");
+        memfs.createReadStream('/annotatedSnapshot.jpg').pipe(res);
+      } else {
+        logger.log("debug", "Serving cached camera snapshot");
+        memfs.createReadStream('/cameraSnapshot.jpg').pipe(res);
+      }
     } else {
       logger.log("debug", "Serving cached camera snapshot");
       memfs.createReadStream('/cameraSnapshot.jpg').pipe(res);
@@ -145,8 +152,12 @@ function sendStatus(runningState) {
   http.get("http://localhost:5000/" + runningState, (resp) => {
     resp.on('end', () => {
       logger.log('info', 'Sent messate to Tensorflow to start object detection');
-    });
+    })
+  })
+  .on('error', function(err) {
+    logger.log('error', err)
   });
+
 }
 
 request
