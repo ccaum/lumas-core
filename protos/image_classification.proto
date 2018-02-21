@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package classification;
+
+// The image classification service
+service ImageClassification {
+  rpc classify (ImageToBeClassified) returns (Classification) {}
+}
+
+message Image {
+  string base64Image = 1;
+}
+
+message ImageToBeClassified {
+  Image image = 1;
+  bool outlineObjects = 2;
+  repeated string classesToOutline = 3;
+}
+
+message Point {
+  int32 x = 1;
+  int32 y = 2;
+}
+
+message Rectangle {
+  Point bottomLeft = 1;
+  Point topRight = 2;
+}
+
+message ImageSize {
+  int32 x = 1;
+  int32 y = 2;
+}
+
+message ClassifiedObject {
+  Rectangle boundary = 1;
+  float score = 2;
+  ImageSize imageSize = 3;
+  string objectClass = 4;
+}
+
+message Classification {
+  repeated ClassifiedObject objects = 1;
+  Image annotatedImage = 2;
+}
