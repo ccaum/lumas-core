@@ -1,23 +1,15 @@
 from models import object_detection
-from threading import Thread
-from flask import Flask, request
-import websocket
-import thread
+from concurrent import futures
+import signal
+import grpc
 import time
+import numpy as np
 import cv2
-import sys
 import os
-import json
-import os
-import sys
 import base64
 
-# Global variables shared between threads
-frame = None
-ret = None
-process_feed = False
-camera_open = False
-timer = None
+import image_classification_pb2_grpc
+import image_classification_pb2
 
 # Load the TensorFlow models into memory
 base_path = os.path.dirname(os.path.abspath(__file__))
@@ -27,124 +19,84 @@ net = object_detection.Net(graph_fp='%s/frozen_inference_graph.pb' % model_path,
     num_classes=90,
     threshold=0.6)
 
-# Create the API endpoints
-app = Flask(__name__)
+_ONE_DAY_IN_SECONDS = 60 * 60 * 24
 
-def stopwatch():
-    global process_feed
-    global timer
+class ImageClassification(image_classification_pb2_grpc.ImageClassificationServicer):
+    def classify(self, request, context):
+	# Settings for annotating image with outlines of detected objects
+	font = cv2.FONT_HERSHEY_SIMPLEX
+	font_scale = 1
+	font_color = (0, 255, 0)
+	line_type = 2
+	offset = 20
 
-    seconds = time.time() - timer
+        outline_objects = request.outlineObjects
+        classes_to_outline = request.classesToOutline
+        base64_image = request.image.base64Image
 
-    while seconds <= 60:
-        time.sleep(1)
-        seconds = time.time() - timer
+        # Decode the base64 string
+        img = base64.b64decode(base64_image)
 
-    # Tell the TF thread to stop
-    #event.set()
+        data = np.fromstring(img, dtype=np.uint8)
+        decoded_img = cv2.imdecode(data, 1)
 
-    process_feed = False
-    timer = None
+        # Perform the classification
+        results = net.predict(decoded_img)
 
-@app.route('/start')
-def start():
-    global timer
-    global process_feed
+        classification = image_classification_pb2.Classification()
+        classified_objects = []
 
-    #objects = request.args.get('objects')
-    #objects = objects.split(',')
+        # Build classification objects based on protobuf definition
+        for obj in results:
+            y1, x1, y2, x2 = obj['bb_o']
+            image_size = {'x': obj['img_size'][0], 'y': obj['img_size'][1]}
+            score = obj['score']
+            label = obj['class']
 
-    #e = threading.Event()
+            classification_object = image_classification_pb2.ClassifiedObject()
+            classification_object.boundary.bottomLeft.x = x1
+            classification_object.boundary.bottomLeft.y = y1
+            classification_object.boundary.bottomLeft.x = x2
+            classification_object.boundary.bottomLeft.y = y2
+            classification_object.score = score
+            classification_object.imageSize.x = image_size['x']
+            classification_object.imageSize.y = image_size['y']
+            classification_object.objectClass = label
+            classified_objects.append(classification_object)
 
-    # There must not be threads running if timer == None
-    if timer == None:
-        timer = time.time()
-        stopwatchthread = Thread(target=stopwatch)
-        stopwatchthread.start()
+	    # Outline the object if we're supposed to
+	    if (outline_objects):
 
-    #tfthread = Thread(target=tf, args=[e,objects])
-    #tfthread.start()
+                # Annotate the object if there were no classes to filter on 
+                # or if the object is in the list of classes to filter on
+                if (classes_to_outline == [] or label in classes_to_outline):
+                    cv2.rectangle(decoded_img, (x1, y1), (x2, y2), (255, 0, 0), 2)
+                    cv2.putText(decoded_img, label,
+                        (x1 + offset, y1 - offset),
+                        font,
+                        font_scale,
+                        font_color,
+                        line_type)
 
-    process_feed = True
-    return "OK"
+        # If we might have annotated the image, encode it and pass it back
+        if (outline_objects):
+	    retval, img_bytes = cv2.imencode(".jpg", decoded_img)
+	    encoded_image = base64.b64encode(img_bytes)
+	    classification.annotatedImage.base64Image = encoded_image
 
-def tf():
-    #while not e.isSet():
-    while True:
-        if camera_open:
-            if ret:
-                results = net.predict(frame)
-                jpg = cv2.imencode('.jpg', frame)[1]
-                encoded_frame = base64.b64encode(jpg)
+        # Add all the classified objets to the gRPC classification message
+	classification.objects.extend(classified_objects)
 
-                results_hash = {
-                  'results': results,
-                  'img':     encoded_frame
-                }
-
-                json_string = json.dumps(results_hash)
-
-                ws.send(json_string)
-        else:
-            time.sleep(0.1)
-
-def camera():
-    global camera_open
-    global frame
-    global ret
-    cap = None
-
-    while True:
-        if process_feed:
-            video_location = os.getenv('STREAM_URL')
-
-            if cap == None:
-                try:
-                    cap = cv2.VideoCapture(video_location)
-                except:
-                    sys.stderr.write("Could not open camera feed.\n")
-                    camera_open = False
-
-            ret, frame = cap.read()
-            camera_open = True
-        else:
-            if cap:
-                cap.release()
-                cap = None
-            camera_open = False
-            time.sleep(0.1)
-
-def socket():
-    global ws
-
-    while True:
-        try:
-            websocket.enableTrace(False)
-            ws = websocket.WebSocketApp("ws://localhost:8089/")
-            ws.run_forever()
-        except Exception as err:
-            sys.stderr.write("Could not connect to websocket: " + str(err) + ". Trying again in 1 second\n")
-            time.sleep(1)
-
-def webapp():
-    app.run(host='0.0.0.0')
-
+        ## Return Classification message defined in protobuf
+        return classification
+        
 if __name__ == '__main__':
-    sys.stderr.write("Starting threads\n")
-    camerathread = Thread(target=camera)
-    camerathread.start()
-
-    tfthread = Thread(target=tf)
-    tfthread.start()
-
-    webthread = Thread(target=webapp)
-    webthread.start()
-    wsthread = Thread(target=socket)
-    wsthread.start()
-
-    wsthread.join()
-    tfthread.join()
-    camerathread.join()
-    webthread.join()
-
-    ws.close()
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=4))
+    image_classification_pb2_grpc.add_ImageClassificationServicer_to_server(ImageClassification(), server)
+    server.add_insecure_port('[::]:50051')
+    server.start()
+    try:
+        while True:
+            time.sleep(_ONE_DAY_IN_SECONDS)
+    except signal.SIGHUP:
+        server.stop(0)
