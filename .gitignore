@@ -109,5 +109,9 @@ tf-person-detection/faster_rcnn_inception_v2_coco_2017_11_08.tar.gz
 faster_rcnn_inception_v2_coco_2017_11_08.tar.gz
 vgg16.npy
 
+# protobuf compiled files
+*pb2.py
+*image_classification_pb2_grpc.py
+
 # HomeKit persistance files
 homekit/persist
