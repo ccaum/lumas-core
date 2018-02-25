@@ -16,6 +16,7 @@ COPY . /app/
 
 COPY ./protos /protos
 RUN python -m grpc_tools.protoc -I /protos --python_out=/app/ --grpc_python_out=/app/ /protos/image_classification.proto
+RUN python -m grpc_tools.protoc -I /protos --python_out=/app/ --grpc_python_out=/app/ /protos/worker.proto
 
 # Install the TF pre-trained model
 RUN apt-get install -y curl tar git && \
@@ -23,4 +24,4 @@ RUN apt-get install -y curl tar git && \
     tar -xvzf faster_rcnn_inception_v2_coco_2017_11_08.tar.gz && \
     rm faster_rcnn_inception_v2_coco_2017_11_08.tar.gz
 
-CMD python /app/app.py
+CMD python -u /app/app.py
