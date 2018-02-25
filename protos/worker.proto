@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package workers;
+
+service Register {
+  rpc register (Worker) returns (RegisterResult) {}
+}
+
+message Service {
+  string name = 1;
+  string ProcessesingType = 2;
+}
+
+message Worker {
+  string grpcAddress = 1;
+  string grpcPort = 2;
+  bool available = 3;
+  repeated Service services = 4;
+}
+
+message RegisterResult {
+  bool successful = 1;
+  string errorKind = 2;
+  string message = 3;
+}
