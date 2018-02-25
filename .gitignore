@@ -112,6 +112,10 @@ vgg16.npy
 # protobuf compiled files
 *pb2.py
 *image_classification_pb2_grpc.py
+*worker_pb2_grpc.py
 
 # HomeKit persistance files
 homekit/persist
+
+# Development docker-compose file
+docker-compose.dev.yml
