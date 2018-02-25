@@ -7,9 +7,18 @@ import numpy as np
 import cv2
 import os
 import base64
+import logging
 
 import image_classification_pb2_grpc
 import image_classification_pb2
+import worker_pb2_grpc
+import worker_pb2
+
+# Set up logging
+logging.basicConfig(filename='/app/logs/classifier.log', level=logging.DEBUG)
+
+#gRPC configs
+_GRPC_PORT = 50052
 
 # Load the TensorFlow models into memory
 base_path = os.path.dirname(os.path.abspath(__file__))
@@ -20,6 +29,20 @@ net = object_detection.Net(graph_fp='%s/frozen_inference_graph.pb' % model_path,
     threshold=0.6)
 
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
+
+def register():
+    channel = grpc.insecure_channel('localhost:50051')
+    stub = worker_pb2_grpc.RegisterStub(channel)
+    grpc_service = worker_pb2.Service(name = "Image")
+    grpc_worker = worker_pb2.Worker(grpcAddress = "localhost", grpcPort = str(_GRPC_PORT))
+    response = stub.register(grpc_worker)
+
+    if response.successful:
+        logging.debug("Successfully registered with contoller.")
+        return True
+    else:
+        logging.error("Could not register worker with Controller. Error is: %s" % response.message)
+        return False
 
 class ImageClassification(image_classification_pb2_grpc.ImageClassificationServicer):
     def classify(self, request, context):
@@ -87,14 +110,24 @@ class ImageClassification(image_classification_pb2_grpc.ImageClassificationServi
         # Add all the classified objets to the gRPC classification message
 	classification.objects.extend(classified_objects)
 
+        # Register with the controller that we're ready for more work
+        register()
+
         ## Return Classification message defined in protobuf
         return classification
         
+
 if __name__ == '__main__':
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=4))
     image_classification_pb2_grpc.add_ImageClassificationServicer_to_server(ImageClassification(), server)
-    server.add_insecure_port('[::]:50051')
+    server.add_insecure_port('[::]:50052')
     server.start()
+
+    # Register with the controller that we're ready for work
+    registration_successful = False
+    while registration_successful == False:
+        registration_successful = register()
+
     try:
         while True:
             time.sleep(_ONE_DAY_IN_SECONDS)
