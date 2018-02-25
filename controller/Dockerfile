@@ -78,6 +78,4 @@ COPY ./controller/app.js /app/
 COPY ./controller/package.json /app/
 RUN npm install
 
-RUN apt-get -y install ffmpeg
-
 CMD node /app/app.js
