@@ -4,23 +4,27 @@ const async = require('async');
 const http = require('http');
 const fs = require('fs');
 const memfs = require('memfs');
+const grpc = require('grpc');
+const cv = require('/node_modules/opencv4nodejs/lib/opencv4nodejs');
 
 var shouldNotify = true
 var loglevel = process.env.LOG_LEVEL || 'info';
-var cameraSnapshot = null;
-var annotatedSnapshot = null;
-var snapshotData = null;
-var snapshotResetTimer = null;
+var workers = []
 
-const snapshotClearTimer = setTimeout(() => {
-    snapshot = null;
-}, 2000);
+if (fs.existsSync('/protos')) {
+  PROTO_DIR = '/protos';
+} else {
+  PROTO_DIR = __dirname + '/../protos';
+}
+
+var image_classification_proto_file = PROTO_DIR + '/image_classification.proto';
+var image_classification_proto = grpc.load(image_classification_proto_file).classification;
+var worker_proto_file = PROTO_DIR + '/worker.proto';
+var worker_proto = grpc.load(worker_proto_file).workers;
 
 //Winston nodejs logger
 const { createLogger, format, transports } = require('winston');
 const { combine, timestamp, label, prettyPrint } = format;
-
-const wss = new WebSocket.Server({ port: 8089 });
 
 const logger = createLogger({
   level: loglevel,
@@ -30,7 +34,6 @@ const logger = createLogger({
   ),
   transports: [
     new transports.Console(),
-    new transports.File({ filename: '/app/logs/controller-error.log', level: 'error' }),
     new transports.File({ filename: '/app/logs/controller.log' })
   ]
 });
@@ -67,29 +70,27 @@ http.createServer(function (req, res) {
   });
 }).listen(8090);
 
-wss.on('connection', function connection(ws) {
-  ws.on('message', function incoming(message) {
-    processObjects(JSON.parse(message));
-  });
-});
-
-function resetNotification() {
-  logger.log('info', 'Resetting HomeKit notification timer');
-  shouldNotify = true;
-}
+http.createServer(function (req, res) {
+  logger.log("debug", "Manually triggering feed processesing.");
+  processFeed();
+}).listen(9090);
 
 function notifyHomeKit() {
   if (shouldNotify) {
+    // Make sure we don't over notify
     shouldNotify = false;
 
     http.get("http://localhost:8888/", (resp) => {
       resp.on('end', () => {
-        logger.log('info', 'Notified HomeKit of presence of person');
+        logger.log('info', 'Sent HomeKit notification');
       });
     });
 
     // Do not notify again for another 10 minutes
-    setTimeout(resetNotification, 300000)
+    setTimeout( function() {
+      logger.log('info', 'Resetting HomeKit notification timer');
+      shouldNotify = true;
+    }, 300000)
   }
 }
 
@@ -118,86 +119,146 @@ function captureCameraSnapshot() {
       .pipe(file);
 }
 
-function processObjects(data) {
-  data['results'].forEach(function(value) {
-    logger.log('debug', "Object recieved: " + JSON.stringify(value));
-    if (value['class'] == 'person') {
-      snapshotData = [ value ];
-      snapshot = Buffer.from(data['img'], 'base64');
+function registerWorker(request, callback) {
+  worker = request.request;
+  workers.push(worker);
 
-      var file = memfs.createWriteStream('/annotatedSnapshot.jpg');
-      memfs.writeFileSync('/objectSnapshot.jpg', snapshot);
+  logger.log("debug", "Registered new worker " + worker.grpcAddress);
 
-      formData = {
-        parameters: JSON.stringify(snapshotData),
-        img: memfs.createReadStream('/objectSnapshot.jpg')
-      };
+  callback(null, {successful: true});
+}
 
-      request.post({ url: 'http://localhost:8899/addboxes', formData: formData}, function() {})
-      .pipe(file)
-      .on('finish', function() {
-        logger.log('debug', "Done adding boxes to frame");
-        memfs.unlink('/objectSnapshot.jpg', function(err) {
-          if (err) {
-            logger.log('error', "Unable to delete temporary file objectSnapshot.jpg");
+function onWorker(waitForWorker, callback) {
+  var worker;
+
+  const interval = setInterval( function() {
+    if (workers.length > 0) {
+      worker = workers.shift()
+      callback(worker)
+      clearInterval(interval);
+    } else {
+      // If we shouldn't wait for a worker to become available 
+      // then clear the interval and return
+      if (!waitForWorker) {
+        clearInterval(interval);
+      }
+    }
+  }, 0);
+}
+
+function classify(image, callback) {
+  onWorker(false, function(worker) {
+    logger.log("debug", "Classifying with worker " + worker.grpcAddress);
+    var client = new image_classification_proto.ImageClassification(
+      worker.grpcAddress + ':' + worker.grpcPort,
+      grpc.credentials.createInsecure());
+
+    var imageToBeClassified = {
+      image: {
+        base64Image: new Buffer(image).toString('base64'),
+      },
+      outlineObjects: true,
+      classesToOutline: ["person"]
+    }
+
+    client.classify(imageToBeClassified, function(err, results) { 
+      if (err) {
+        logger.log('error', "Could not classify image: " + err);
+      }
+
+      if (callback) {
+        callback(results);
+      }
+    });
+  });
+}
+
+function processFeed() {
+  
+  const cap = new cv.VideoCapture(process.env.CAMERA_STREAM_URL);
+  let done = false;
+
+  const interval = setInterval(() => {
+    let frame = cap.read();
+
+    if (frame) {
+      // Classification expects an encoded image
+      jpg = cv.imencode('.jpg', frame);
+
+      classify(jpg, function(results) {
+        results['objects'].forEach(function(object) {
+          logger.log('debug', "Object recieved: " + JSON.stringify(object));
+          updateSnapshot = false;
+
+          if (object.objectClass == 'person') {
+            updateSnapshot = true;
+            notifyHomeKit();
+          }
+
+          if (updateSnapshot) {
+            snapshot = Buffer.from(results.annotatedImage.base64Image, 'base64');
+            memfs.writeFileSync('/annotatedSnapshot.jpg', snapshot);
           }
         });
-        notifyHomeKit();
       });
     }
-  });
+  }, 0);
+
+  //Stop processing after 60 seconds
+  setTimeout(function() {
+    clearInterval(interval)
+  }, 60000);
 }
 
-function sendStatus(runningState) {
-  http.get("http://localhost:5000/" + runningState, (resp) => {
-    resp.on('end', () => {
-      logger.log('info', 'Sent messate to Tensorflow to start object detection');
+function main() {
+  var server = new grpc.Server();
+  server.addService(worker_proto.Register.service, {register: registerWorker});
+  server.bind('[::]:50051', grpc.ServerCredentials.createInsecure());
+  server.start();
+
+  // Cache a snapshot from the camera every 5 seconds
+  setInterval(captureCameraSnapshot, 10000);
+
+  // Connect to the camera and monitor for motion
+  request
+    .get(process.env.CAMERA_MOTION_URL, camera_options)
+    .on('aborted', function() {
+      logger.log('error', "Connection to Camera aborted");
     })
-  })
-  .on('error', function(err) {
-    logger.log('error', err)
-  });
-
-}
-
-request
-  .get(process.env.CAMERA_MOTION_URL, camera_options)
-  .on('aborted', function() {
-    logger.log('error', "Connection to Camera aborted");
-  })
-  .on('error', function(err) {
-    logger.log('error', err);
-  })
-  .on('close', function() {
-    logger.log('info', "Connection to Camera closed");
-  })
-  .on('response', function(res) {
-    code = null;
-    action = null;
-    index = null;
-
-
-    res.on('data', function (body) {
-      data = body.toString('utf8');
-
-      if (data.substring(0,2) == '--') {
-        logger.log('debug', 'Receeived response from camera: ' + data);
-        lines = data.split('\r\n')
-
-        codeString = lines[3].split(';')[0]
-        actionString = lines[3].split(';')[1]
-        indexString = lines[3].split(';')[2]
-
-        code = codeString.split('=')[1]
-        action = actionString.split('=')[1]
-        index = indexString.split('=')[1]
-
-        if (action == 'Start') {
-          sendStatus('start');
+    .on('error', function(err) {
+      logger.log('error', err);
+    })
+    .on('close', function() {
+      logger.log('info', "Connection to Camera closed");
+    })
+    .on('response', function(res) {
+      code = null;
+      action = null;
+      index = null;
+  
+  
+      res.on('data', function (body) {
+        data = body.toString('utf8');
+  
+        if (data.substring(0,2) == '--') {
+          logger.log('debug', 'Receeived response from camera: ' + data);
+          lines = data.split('\r\n')
+  
+          codeString = lines[3].split(';')[0]
+          actionString = lines[3].split(';')[1]
+          indexString = lines[3].split(';')[2]
+  
+          code = codeString.split('=')[1]
+          action = actionString.split('=')[1]
+          index = indexString.split('=')[1]
+  
+          if (action == 'Start') {
+            processFeed();
+          }
         }
-      }
+      })
     })
-  })
 
-// Cache a snapshot from the camera every 5 seconds
-setInterval(captureCameraSnapshot, 10000);
+}
+
+main();
