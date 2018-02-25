@@ -12,7 +12,7 @@ RUN pip install tensorflow && \
 
 RUN mkdir /app
 WORKDIR /app/
-COPY . /app/
+COPY  object-detection/ /app/
 
 COPY ./protos /protos
 RUN python -m grpc_tools.protoc -I /protos --python_out=/app/ --grpc_python_out=/app/ /protos/image_classification.proto
