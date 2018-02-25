@@ -1,11 +1,16 @@
 FROM ccaum/athena-python-opencv
 
-## Set up NodeJS
+# Use our own compiled opencv
+ENV OPENCV4NODEJS_DISABLE_AUTOBUILD 1
 
+ENV NODE_VERSION 9.4.0
+ENV YARN_VERSION 1.3.2
+
+## Set up NodeJS
 RUN groupadd --gid 1000 node \
   && useradd --uid 1000 --gid node --shell /bin/bash --create-home node
 
-RUN apt-get -y update && apt-get -y install dirmngr curl
+RUN apt-get -y update && apt-get -y install dirmngr curl git cmake gcc g++
 
 # gpg keys listed at https://github.com/nodejs/node#release-team
 RUN set -ex \
@@ -24,7 +29,6 @@ RUN set -ex \
     gpg --keyserver ha.pool.sks-keyservers.net --recv-keys "$key" ; \
   done
 
-ENV NODE_VERSION 9.4.0
 
 RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" \
   && case "${dpkgArch##*-}" in \
@@ -44,7 +48,6 @@ RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" \
   && rm "node-v$NODE_VERSION-linux-$ARCH.tar.xz" SHASUMS256.txt.asc SHASUMS256.txt \
   && ln -s /usr/local/bin/node /usr/local/bin/nodejs
 
-ENV YARN_VERSION 1.3.2
 
 RUN set -ex \
   && for key in \
@@ -63,13 +66,18 @@ RUN set -ex \
   && ln -s /opt/yarn/bin/yarn /usr/local/bin/yarnpkg \
   && rm yarn-v$YARN_VERSION.tar.gz.asc yarn-v$YARN_VERSION.tar.gz
 
+## Install opencv4nodejs
+RUN npm install --save opencv4nodejs
 
 ## Install the app
 RUN mkdir /app
 WORKDIR /app
 RUN npm install ws && npm install request && npm install memfs
-COPY app.js /app/
-COPY package.json /app/
+COPY ./protos /protos
+COPY ./controller/app.js /app/
+COPY ./controller/package.json /app/
 RUN npm install
+
+RUN apt-get -y install ffmpeg
 
 CMD node /app/app.js
