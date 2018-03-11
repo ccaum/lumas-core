@@ -3,6 +3,7 @@ const request = require('request');
 const http = require('http');
 const util = require('util')
 const memfs = require('memfs');
+const fs = require('fs');
 const logger = require('./logger.js');
 const cv = require('/node_modules/opencv4nodejs/lib/opencv4nodejs');
 
@@ -19,7 +20,14 @@ const camera_options = {
 
 module.exports = Camera;
 
-function Camera() {
+function Camera(controllerEvents = undefined) {
+  if (controllerEvents) {
+    controllerEvents.on('classifiedImg', function(imgBuf) {
+      memfs.writeFile('/annotatedSnapshot.jpg', imgBuf, function() {});
+      fs.writeFile('/app/test.jpg', imgBuf, function() {});
+    });
+  }
+
   setInterval(this.captureCameraSnapshot, 10000);
   this.cameraMotionMonitor();
   EventEmitter.call(this);
@@ -126,8 +134,9 @@ Camera.prototype.cameraMotionMonitor = function () {
     })
 }
 
-Camera.prototype.getSnapshot = function() {
+Camera.prototype.getSnapshot = function(callback) {
   var age;
+  var file;
 
   memfs.stat('/annotatedSnapshot.jpg', function(err, stats) {
     if (stats) {
@@ -137,16 +146,22 @@ Camera.prototype.getSnapshot = function() {
       //Only send the annotated snapshot if it's less than 10 seconds old
       if (age < 10000) {
         logger.log("debug", "Serving annotated camera snapshot");
-        memfs.createReadStream('/annotatedSnapshot.jpg').pipe(res);
+        file = '/annotatedSnapshot.jpg';
       } else {
         logger.log("debug", "Serving cached camera snapshot");
-        memfs.createReadStream('/cameraSnapshot.jpg').pipe(res);
+        file = '/cameraSnapshot.jpg';
       }
     } else {
       logger.log("debug", "Serving cached camera snapshot");
-      memfs.createReadStream('/cameraSnapshot.jpg').pipe(res);
+      file = '/cameraSnapshot.jpg';
     }
+
+    memfs.readFile(file, function(err, buf) {
+      if (err) {
+        logger.log("error", "Could not read " + file + " from memfs: " + err.message);
+      }
+
+      callback(buf);
+    });
   });
 }
-
-

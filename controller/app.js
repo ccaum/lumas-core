@@ -1,4 +1,4 @@
-const startController = require('./controller.js');
+const { startController, events } = require('./controller.js');
 const logger = require('./logger.js');
 
 var controller;

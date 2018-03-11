@@ -70,7 +70,6 @@ exports.motionDetected = function(state = true) {
 
     // Do not notify again for another 10 minutes
     setTimeout( function() {
-      logger.log('info', 'Resetting HomeKit notification timer');
       shouldNotify = true;
     }, 300000)
   }

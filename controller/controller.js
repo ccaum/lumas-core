@@ -6,7 +6,7 @@ const util = require('util')
 const logger = require('./logger.js');
 const Camera = require('./camera.js');
 const { motionDetected } = require('./homekit/motion.js');
-const { camera } = require('./homekit/camera.js');
+const { HomeKitCamera } = require('./homekit/camera.js');
 
 if (fs.existsSync('/protos')) {
   PROTO_DIR = '/protos';
@@ -20,44 +20,40 @@ var worker_proto_file = PROTO_DIR + '/worker.proto';
 var worker_proto = grpc.load(worker_proto_file).workers;
 
 var workers = [];
+var events = new EventEmitter();
 
-module.exports = startController;
+module.exports = {
+  startController: startController,
+  events: events
+}
 
 function startController() {
+  const self = this;
 
   var server = new grpc.Server();
   server.addService(worker_proto.Register.service, {register: registerWorker});
   server.bind('[::]:50051', grpc.ServerCredentials.createInsecure());
   server.start();
 
-  var camera = new Camera();
+  var camera = new Camera(events);
+  var homeKitCamera = new HomeKitCamera(camera);
 
   camera.on('image', function(img) {
     classify(img, function(results) {
       results['objects'].forEach(function(object) {
         logger.log('debug', "Object recieved: " + JSON.stringify(object));
 
-        if (object.objectClass == 'car') {
+        if (object.objectClass == 'person') {
+          events.emit('classifiedImg', new Buffer(results.annotatedImage.base64Image, 'base64'));
           notifyHomeKit();
         }
       });
     });
   });
-
-  //Set up the event emitter
-  EventEmitter.call(this);
 }
-
-util.inherits(startController, EventEmitter);
 
 function notifyHomeKit() {
   motionDetected(true);
-
-  // Do not notify again for another 5 minutes
-  setTimeout( function() {
-    logger.log('info', 'Resetting HomeKit notification timer');
-    motionDetected(false);
-  }, 300000)
 }
 
 function registerWorker(request, callback) {
@@ -99,7 +95,7 @@ function classify(image, callback) {
         base64Image: new Buffer(image).toString('base64'),
       },
       outlineObjects: true,
-      classesToOutline: ["car"]
+      classesToOutline: ["person"]
     }
 
     client.classify(imageToBeClassified, function(err, results) { 
