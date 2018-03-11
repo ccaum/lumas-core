@@ -3,14 +3,14 @@ FROM ccaum/athena-python-opencv
 # Use our own compiled opencv
 ENV OPENCV4NODEJS_DISABLE_AUTOBUILD 1
 
-ENV NODE_VERSION 9.4.0
+ENV NODE_VERSION 9.7.1
 ENV YARN_VERSION 1.3.2
 
 ## Set up NodeJS
 RUN groupadd --gid 1000 node \
   && useradd --uid 1000 --gid node --shell /bin/bash --create-home node
 
-RUN apt-get -y update && apt-get -y install dirmngr curl git cmake gcc g++
+RUN apt-get -y update && apt-get -y install dirmngr curl git cmake gcc g++ libavahi-compat-libdnssd-dev ffmpeg
 
 # gpg keys listed at https://github.com/nodejs/node#release-team
 RUN set -ex \
@@ -73,9 +73,10 @@ RUN npm install --save opencv4nodejs
 RUN mkdir /app
 WORKDIR /app
 RUN npm install ws && npm install request && npm install memfs
+COPY ./controller/scripts/run.sh /run.sh
 COPY ./protos /protos
 COPY ./controller/app.js /app/
 COPY ./controller/package.json /app/
 RUN npm install
 
-CMD node /app/app.js
+CMD /run.sh
