@@ -5,6 +5,7 @@ const util = require('util')
 const memfs = require('memfs');
 const fs = require('fs');
 const logger = require('./logger.js');
+const retry = require('retry');
 const cv = require('/node_modules/opencv4nodejs/lib/opencv4nodejs');
 
 var snapshot;
@@ -62,16 +63,27 @@ Camera.prototype.captureCameraSnapshot = function () {
 
 Camera.prototype.processFeed = function () {
   const self = this;
-  const cap = new cv.VideoCapture(process.env.CAMERA_STREAM_URL);
+  let cap;
+
+  var cameraOperation = retry.operation({ maxTimeout: 60 * 1000});
+
+  cameraOperation.attempt( function() {
+    cap = new cv.VideoCapture(process.env.CAMERA_STREAM_URL);
+  });
 
   const interval = setInterval(() => {
     let frame = cap.read();
 
     if (frame) {
       self.emit('frame', frame);
+
       // Classification expects an encoded image
-      jpg = cv.imencode('.jpg', frame);
-      self.emit('image', jpg);
+      var jpg = null;
+      try {
+        jpg = cv.imencode('.jpg', frame);
+        self.emit('image', jpg);
+      } catch(error) { logger.log('error', error) }
+
     }
   }, 0);
 
@@ -84,12 +96,6 @@ Camera.prototype.processFeed = function () {
 Camera.prototype.cameraMotionMonitor = function () {
   const self = this;
 
-  http.createServer(function (req, res) {
-    logger.log("info", "Manually triggering camera feed processing");
-
-    self.processFeed();
-  }).listen(9090);
-
   // Connect to the camera and monitor for motion
   request
     .get(process.env.CAMERA_MOTION_URL, camera_options)
@@ -98,7 +104,7 @@ Camera.prototype.cameraMotionMonitor = function () {
       cameraMotionMonitor();
     })
     .on('error', function(err) {
-      logger.log('error', err);
+      logger.log('error', "Got error: " + err + ". Resetting camera connection");
       cameraMotionMonitor();
     })
     .on('close', function() {
