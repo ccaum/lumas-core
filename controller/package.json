@@ -19,7 +19,8 @@
     "node-persist": "^0.0.11",
     "hap-nodejs": "^0.4.41",
     "find-free-port": "^1.2.0",
-    "retry": "^v0.10.1"
+    "retry": "^v0.10.1",
+    "moment-timezone": "^v0.5.14"
   },
   "devDependencies": {},
   "scripts": {
