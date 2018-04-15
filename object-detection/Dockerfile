@@ -1,19 +1,25 @@
-FROM ccaum/athena-python-opencv
+FROM tensorflow/tensorflow:latest-devel
 
-ARG TF_BRANCH=v1.6.0
+LABEL maintainer="Clayne Robison<clayne.b.robison@intel.com>"
+
+# These arguments are parameterized. Use --build-args to override.
+ARG TF_BRANCH=r1.5
 ARG WHL_DIR=/whl
 
-RUN apt-get update && apt-get -y install python-pip git openjdk-8-jdk curl
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        golang \
+        vim \
+        emacs \
+        && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
-# Make sure we're running the latest version of pip
-RUN python -m pip install --upgrade pip
+RUN pip --no-cache-dir install --upgrade \
+        pip setuptools
 
-# Install bazel for Tensorflow build
-RUN echo "deb [arch=amd64] http://storage.googleapis.com/bazel-apt stable jdk1.8" | tee /etc/apt/sources.list.d/bazel.list && \
-    curl https://bazel.build/bazel-release.pub.gpg | apt-key add - && \
-    apt-get update && apt-get install bazel -y
+RUN pip --no-cache-dir install wheel 
 
-# Install Tensorflow# Download and build TensorFlow.
+# Download and build TensorFlow.
 WORKDIR /
 RUN rm -rf tensorflow && \
     git clone https://github.com/tensorflow/tensorflow.git && \
@@ -59,22 +65,19 @@ RUN LD_LIBRARY_PATH=${LD_LIBRARY_PATH} \
 RUN pip --no-cache-dir install --upgrade ${WHL_DIR}/tensorflow-*.whl && \
     rm -rf /root/.cache
 
-# Install and gRPC
-RUN pip install grpcio && \
-    pip install grpcio-tools
+WORKDIR /root
 
-RUN mkdir /app
-WORKDIR /app/
-COPY  object-detection/ /app/
+#add welcome message with instructions
 
-COPY ./protos /protos
-RUN python -m grpc_tools.protoc -I /protos --python_out=/app/ --grpc_python_out=/app/ /protos/image_classification.proto
-RUN python -m grpc_tools.protoc -I /protos --python_out=/app/ --grpc_python_out=/app/ /protos/worker.proto
-
-# Install the TF pre-trained model
-RUN apt-get install -y curl tar git && \
-    curl -O  http://download.tensorflow.org/models/object_detection/faster_rcnn_inception_v2_coco_2017_11_08.tar.gz && \
-    tar -xvzf faster_rcnn_inception_v2_coco_2017_11_08.tar.gz && \
-    rm faster_rcnn_inception_v2_coco_2017_11_08.tar.gz
-
-CMD python -u /app/app.py
+RUN echo '[ ! -z "$TERM" -a -r /etc/motd ] && cat /etc/issue && cat /etc/motd' \
+  >> /etc/bash.bashrc \
+  ; echo "\
+||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||\n\
+|                \n\
+| Docker container running Ubuntu        \n\
+| with TensorFlow ${TF_BRANCH} optimized for CPU    \n\
+| with Intel(R) MKL            \n\
+|                \n\
+||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||\n\
+\n "\
+  > /etc/motd
