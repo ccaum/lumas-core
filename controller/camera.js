@@ -66,9 +66,14 @@ Camera.prototype.captureCameraSnapshot = function (self) {
         }
       });
 
+      if (process.env.CAMERA_SAVE_SNAPSHOTS === "true") {
+        var fsfile = fs.createWriteStream("/snapshots/" + Date.now() + ".jpg");
+        memfs.createReadStream('/cameraSnapshot.jpg').pipe(fsfile);
+      }
       logger.log('debug', "Succesfully updated camera snapshot");
     })
     .pipe(file);
+
 }
 
 Camera.prototype.processFeed = function () {
