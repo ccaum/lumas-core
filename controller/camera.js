@@ -84,7 +84,7 @@ Camera.prototype.processFeed = function () {
   const interval = setInterval(() => {
     let frame = cap.read();
 
-    if (frame) {
+    if (frame && !frame.empty) {
       self.emit('frame', frame);
 
       // Classification expects an encoded image
