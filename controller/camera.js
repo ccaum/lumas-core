@@ -22,6 +22,7 @@ const camera_options = {
 module.exports = Camera;
 
 function Camera(controllerEvents = undefined) {
+  const self = this;
   if (controllerEvents) {
     controllerEvents.on('classifiedImg', function(imgBuf) {
       memfs.writeFile('/annotatedSnapshot.jpg', imgBuf, function() {});
@@ -29,14 +30,17 @@ function Camera(controllerEvents = undefined) {
     });
   }
 
-  setInterval(this.captureCameraSnapshot, 10000);
-  this.cameraMotionMonitor();
-  EventEmitter.call(this);
+  setInterval(function () {
+    self.captureCameraSnapshot(self)
+  }, 10000);
+
+  self.cameraMotionMonitor();
+  EventEmitter.call(self);
 }
 
 util.inherits(Camera, EventEmitter)
 
-Camera.prototype.captureCameraSnapshot = function () {
+Camera.prototype.captureCameraSnapshot = function (self) {
   var file = memfs.createWriteStream('/cameraSnapshot.jpg');
 
   request
@@ -53,9 +57,15 @@ Camera.prototype.captureCameraSnapshot = function () {
       }
     })
     .on('error', function(err) {
-      logger.log('error', err);
+      logger.log('error', "Error message: " + err);
     })
     .on('end', function() {
+      memfs.readFile('/cameraSnapshot.jpg', (err, data) => {
+        if (!err) {
+          self.emit('image', data)
+        }
+      });
+
       logger.log('debug', "Succesfully updated camera snapshot");
     })
     .pipe(file);
