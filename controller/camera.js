@@ -108,23 +108,32 @@ Camera.prototype.processFeed = function () {
   }, 60000);
 }
 
-Camera.prototype.cameraMotionMonitor = function () {
+Camera.prototype.amcrestMotionMonitor = function () {
   const self = this;
 
+  logger.log('info', "Listening for motion from camera");
+
   // Connect to the camera and monitor for motion
-  request
-    .get(process.env.CAMERA_MOTION_URL, camera_options)
-    .on('aborted', function() {
+  self.motionRequest = request.get(process.env.CAMERA_MOTION_URL, camera_options)
+  self.motionRequest.on('abort', function() {
       logger.log('error', "Connection to Camera aborted");
       cameraMotionMonitor();
     })
     .on('error', function(err) {
       logger.log('error', "Got error: " + err + ". Resetting camera connection");
-      cameraMotionMonitor();
+      self.amcrestMotionMonitor();
+    })
+    .on('timeout', function() {
+      logger.log('error', "Connection to camera timed out. Reconnecting");
+      self.amcrestMotionMonitor();
+    })
+    .on('upgrade', function() {
+      logger.log('error', "Connection to camera got an upgrade connection request. Reconnecting");
+      self.amcrestMotionMonitor();
     })
     .on('close', function() {
       logger.log('info', "Connection to Camera closed");
-      cameraMotionMonitor();
+      self.amcrestMotionMonitor();
     })
     .on('response', function(res) {
       code = null;
@@ -153,6 +162,23 @@ Camera.prototype.cameraMotionMonitor = function () {
         }
       })
     })
+
+  // Initiate a new connection every 10 seconds since the connection
+  // gets stale and stops responding without any error for some reason.
+  setTimeout(function() {
+    self.motionRequest.agent.destroy();
+    self.amcrestMotionMonitor();
+  }, 600000);
+}
+
+Camera.prototype.cameraMotionMonitor = function () {
+  const self = this;
+
+  http.createServer(function(request, response) {
+    self.processFeed();
+  }).listen(9999);
+
+  self.amcrestMotionMonitor();
 }
 
 Camera.prototype.getSnapshot = function(callback) {
