@@ -1,4 +1,4 @@
-FROM ccaum/athena-python-opencv
+FROM lumas/lumas-python-opencv
 
 # Use our own compiled opencv
 ENV OPENCV4NODEJS_DISABLE_AUTOBUILD 1
