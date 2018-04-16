@@ -1,10 +1,23 @@
 version: '3'
 services:
-  monitor:
+  object-classification:
+    restart: always
+    image: lumas/lumas-object-detection
+    network_mode: host
+    volumes:
+      - ./logs:/app/logs
+  controller:
+    restart: always
     environment:
-      - CAMERA_URL=
-    image: 7bc6374b4323
-  tf:
-    environment:
-      - STREAM_URL=
-    image: 33518147fa7a
+      - CAMERA_STREAM_URL=rtsp://<CAMERA USERNAME>:<CAMERA PASSWORD>@<CAMERA IP>
+      - CAMERA_MOTION_URL=http://<AMCREST CAMERA IP>/cgi-bin/eventManager.cgi?action=attach&codes=[VideoMotion]
+      - CAMERA_SNAPSHOT_URL=http://<AMCREST CAMERA IP>/cgi-bin/snapshot.cgi
+      - CAMERA_ADDRESS=<AMCREST CAMERA IP>
+      - CAMERA_USER=<AMCREST CAMERA USERNAME>
+      - CAMERA_PASS=<AMCREST CAMERA PASSWORD>
+      - LOG_LEVEL=info
+      - TZ=America/Los_Angeles
+    image: lumas/lumas-controller
+    network_mode: host
+    volumes:
+      - ./logs:/app/logs
