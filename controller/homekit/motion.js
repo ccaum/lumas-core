@@ -27,7 +27,7 @@ var MOTION_SENSOR = {
 var motionSensorUUID = uuid.generate('hap-nodejs:accessories:motionsensor');
 
 // This is the Accessory that we'll return to HAP-NodeJS that represents our fake motionSensor.
-var motionSensor = exports.accessory = new Accessory('Object Sensor', motionSensorUUID);
+var motionSensor = exports.accessory = new Accessory('Person Sensor', motionSensorUUID);
 
 // Add properties for publishing (in case we're using Core.js and not BridgedCore.js)
 motionSensor.username = "1A:2B:3D:4A:1E:AD";
@@ -47,7 +47,7 @@ motionSensor.on('identify', function(paired, callback) {
 });
 
 motionSensor
-  .addService(Service.MotionSensor, "Object Sensor") // services exposed to the user should have "names" like "Fake Motion Sensor" for us
+  .addService(Service.MotionSensor, "Person Sensor") // services exposed to the user should have "names" like "Fake Motion Sensor" for us
   .getCharacteristic(Characteristic.MotionDetected)
   .on('get', function(callback) {
      MOTION_SENSOR.getStatus();
