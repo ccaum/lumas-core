@@ -1,5 +1,5 @@
 #!/bin/bash
 
-docker build -f Dockerfile.opencv -t lumas/lumas-python-opencv:latest .
-docker build -f controller/Dockerfile -t lumas/lumas-controller:latest .
-docker build -f object-detection/Dockerfile -t lumas/lumas-object-detection:latest .
+docker build --network host -f Dockerfile.opencv --no-cache -t lumas/lumas-python-opencv:latest .
+docker build --network host -f controller/Dockerfile --no-cache -t lumas/lumas-controller:latest .
+docker build --network host -f object-detection/Dockerfile --no-cache -t lumas/lumas-object-detection:latest .
