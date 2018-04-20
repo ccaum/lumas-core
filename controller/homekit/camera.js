@@ -36,7 +36,7 @@ function HomeKitCamera(camera) {
     maxFPS: 10
   }
   
-  cameraAccessory = new Accessory('Amcrest Camera', uuid.generate(config.name + " Camera"));
+  cameraAccessory = new Accessory('Lumas Camera', uuid.generate(config.name + " Camera"));
   
   var cameraSource = new FFMPEG(hap, config, logger);
   
