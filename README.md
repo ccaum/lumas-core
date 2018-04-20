@@ -33,5 +33,7 @@ Presently it also only supports one camera at a time.
 
 ## Roadmap
 
+* Multi-camera support
+* More camera support, including any ONVIF compatible camera
 * Face recognition - Learn familiar faces over time with custom alerts
-* Time lapse - View notifications in time
+* Time lapse - See what's been happening through the day
