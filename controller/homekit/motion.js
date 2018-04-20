@@ -7,6 +7,7 @@ var Service = hap.Service;
 var Characteristic = hap.Characteristic;
 var uuid = hap.uuid;
 var shouldNotify = true;
+var homekitCode = process.env.HOMEKIT_CODE;
 
 // here's a fake hardware device that we'll expose to HomeKit
 var MOTION_SENSOR = {
@@ -27,11 +28,11 @@ var MOTION_SENSOR = {
 var motionSensorUUID = uuid.generate('hap-nodejs:accessories:motionsensor');
 
 // This is the Accessory that we'll return to HAP-NodeJS that represents our fake motionSensor.
-var motionSensor = exports.accessory = new Accessory('Person Sensor', motionSensorUUID);
+var motionSensor = exports.accessory = new Accessory('Lumas Person Sensor', motionSensorUUID);
 
 // Add properties for publishing (in case we're using Core.js and not BridgedCore.js)
 motionSensor.username = "1A:2B:3D:4A:1E:AD";
-motionSensor.pincode = "031-25-359";
+motionSensor.pincode = homekitCode;
 
 // set some basic properties (these values are arbitrary and setting them is optional)
 motionSensor
@@ -47,7 +48,7 @@ motionSensor.on('identify', function(paired, callback) {
 });
 
 motionSensor
-  .addService(Service.MotionSensor, "Person Sensor") // services exposed to the user should have "names" like "Fake Motion Sensor" for us
+  .addService(Service.MotionSensor, "Lumas Person Sensor") // services exposed to the user should have "names" like "Fake Motion Sensor" for us
   .getCharacteristic(Characteristic.MotionDetected)
   .on('get', function(callback) {
      MOTION_SENSOR.getStatus();
