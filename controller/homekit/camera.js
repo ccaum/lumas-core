@@ -15,10 +15,11 @@ module.exports = {
 
 function HomeKitCamera(camera) {
   const config = {
-    name: "Amcrest Camera",
+    name: process.env.CAMERA_NAME,
     username: process.env.CAMERA_USER,
     password: process.env.CAMERA_PASS,
     address: process.env.CAMERA_ADDRESS,
+    homekitCode: process.env.HOMEKIT_CODE,
     maxStreams: 2
   }
   
@@ -28,21 +29,21 @@ function HomeKitCamera(camera) {
   
   config.videoConfig = {
     source: config.source,
-    stillImageSource: "-i http://admin:4RtQd222NLBsn7j43f7jnHoJ@192.168.2.201/cgi-bin/snapshot.cgi",
+    stillImageSource: "-i http://" + config.username + ":" + config.password + "@" + config.address + "/cgi-bin/snapshot.cgi",
     maxStreams: 2,
     maxWidth: 1920,
     maxHeight: 1080,
     maxFPS: 10
   }
   
-  cameraAccessory = new Accessory('Amcrest Camera', uuid.generate("Amcrest Camera"));
+  cameraAccessory = new Accessory('Amcrest Camera', uuid.generate(config.name + " Camera"));
   
   var cameraSource = new FFMPEG(hap, config, logger);
   
   cameraAccessory.configureCameraSource(cameraSource);
   
   cameraAccessory.on('identify', function(paired, callback) {
-      console.log("Amcrest Camera identify");
+      console.log("Camera identify");
       callback(); // success
   });
   
@@ -54,7 +55,7 @@ function HomeKitCamera(camera) {
     cameraAccessory.publish({
       username: "EC:22:3D:D3:CE:CE",
       port: freePort,
-      pincode: "431-48-159",
+      pincode: config.homekitCode,
       category: Accessory.Categories.CAMERA
     }, true);
   })
