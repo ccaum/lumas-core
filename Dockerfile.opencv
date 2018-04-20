@@ -9,7 +9,7 @@ RUN apt-get -y update && apt-get -y install python$PYTHON_VERSION-dev wget unzip
     build-essential cmake git pkg-config libatlas-base-dev gfortran python-pip \
     libjasper1 libswscale-ffmpeg3 libavformat-ffmpeg56 libavcodec-ffmpeg56 libgtk2.0-0 \
     libjasper-dev libgtk2.0-dev libavcodec-dev libavformat-dev \
-    libswscale-dev libjpeg-dev libpng-dev libtiff-dev libjasper-dev libv4l-dev \
+    libswscale-dev libjpeg-dev libpng-dev libtiff-dev libjasper-dev libv4l-0 libv4l-dev \
     && wget https://bootstrap.pypa.io/get-pip.py && python get-pip.py && pip install numpy\
     && wget https://github.com/Itseez/opencv/archive/3.4.0.zip -O opencv3.zip \
     && unzip -q opencv3.zip && mv /opencv-3.4.0 /opencv && rm opencv3.zip \
