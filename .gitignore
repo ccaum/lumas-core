@@ -121,3 +121,5 @@ homekit/persist
 docker-compose.dev.yml
 
 logs
+
+persist
