@@ -40,14 +40,16 @@ function startController() {
 
   camera.on('image', function(img) {
     classify(img, function(results) {
-      results['objects'].forEach(function(object) {
-        logger.log('debug', "Object recieved: " + JSON.stringify(object));
+      if (results) {
+        results['objects'].forEach(function(object) {
+          logger.log('debug', "Object recieved: " + JSON.stringify(object));
 
-        if (object.objectClass == 'person') {
-          events.emit('classifiedImg', new Buffer(results.annotatedImage.base64Image, 'base64'));
-          notifyHomeKit();
-        }
-      });
+          if (object.objectClass == 'person') {
+            events.emit('classifiedImg', new Buffer(results.annotatedImage.base64Image, 'base64'));
+            notifyHomeKit();
+          }
+        });
+      }
     });
   });
 }
