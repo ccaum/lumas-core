@@ -62,7 +62,7 @@ Camera.prototype.captureCameraSnapshot = function (self) {
     .on('end', function() {
       memfs.readFile('/cameraSnapshot.jpg', (err, data) => {
         if (!err) {
-          self.emit('image', data)
+          self.emit('snapshot', data)
         }
       });
 
