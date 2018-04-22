@@ -53,6 +53,11 @@ Run the application with `docker-compose up -d`
 #### 4) In the Nearby Accessories section, select "Lumas Camera"
 ![Add accessory](images/lumas_camera_homekit.jpg)
 
+#### 5) Repeat steps 1-3. In the Nearby Accessories section, select "Lumas Person Sensor"
+![Add accessory](images/person_sensor_homekit.jpg)
+
+That's it! You now have a motion sensor that only triggers motion when a person is detected in the camera feed! HomeKit will send you snapshots of the detected person(s) in a notification.
+
 
 ## Roadmap
 
