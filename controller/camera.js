@@ -7,6 +7,7 @@ const fs = require('fs');
 const logger = require('./logger.js');
 const retry = require('retry');
 const cv = require('/node_modules/opencv4nodejs/lib/opencv4nodejs');
+const Agent = require('agentkeepalive');
 
 var snapshot;
 
@@ -111,20 +112,27 @@ Camera.prototype.processFeed = function () {
 Camera.prototype.amcrestMotionMonitor = function () {
   const self = this;
 
-  logger.log('info', "Listening for motion from camera");
+  const keepaliveAgent = new Agent({
+    maxSockets: 100,
+    maxFreeSockets: 10,
+    timeout: 60000,
+    freeSocketKeepAliveTimeout: 30000, // free socket keepalive for 30 seconds
+  });
+
+  camera_options.agent = keepaliveAgent;
 
   // Connect to the camera and monitor for motion
-  self.motionRequest = request.get(process.env.CAMERA_MOTION_URL, camera_options)
-  self.motionRequest.on('abort', function() {
+  request(process.env.CAMERA_MOTION_URL, camera_options)
+    .on('abort', function() {
       logger.log('error', "Connection to Camera aborted");
-      cameraMotionMonitor();
+      self.amcrestMotionMonitor();
     })
     .on('error', function(err) {
-      logger.log('error', "Got error: " + err + ". Resetting camera connection");
+      logger.log('error', "Error from camera motion monitor: " + err);
       self.amcrestMotionMonitor();
     })
     .on('timeout', function() {
-      logger.log('error', "Connection to camera timed out. Reconnecting");
+      logger.log('error', "Connection to camera timed out. Trying again");
       self.amcrestMotionMonitor();
     })
     .on('upgrade', function() {
@@ -139,36 +147,28 @@ Camera.prototype.amcrestMotionMonitor = function () {
       code = null;
       action = null;
       index = null;
-  
-  
+
       res.on('data', function (body) {
         data = body.toString('utf8');
-  
+
         if (data.substring(0,2) == '--') {
           logger.log('debug', 'Receeived response from camera: ' + data);
           lines = data.split('\r\n')
-  
+
           codeString = lines[3].split(';')[0]
           actionString = lines[3].split(';')[1]
           indexString = lines[3].split(';')[2]
-  
+
           code = codeString.split('=')[1]
           action = actionString.split('=')[1]
           index = indexString.split('=')[1]
-  
+
           if (action == 'Start') {
             self.processFeed();
           }
         }
       })
-    })
-
-  // Initiate a new connection every 10 seconds since the connection
-  // gets stale and stops responding without any error for some reason.
-  setTimeout(function() {
-    self.motionRequest.agent.destroy();
-    self.amcrestMotionMonitor();
-  }, 600000);
+    });
 }
 
 Camera.prototype.cameraMotionMonitor = function () {
