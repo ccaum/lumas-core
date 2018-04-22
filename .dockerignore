@@ -1,2 +1,6 @@
 object-detection/faster_rcnn_inception_v2_coco_2017_11_08
 object-detection/examples
+controller/node_modules
+controller/persist
+controller/package-lock.json
+controller/yarn.lock
