@@ -72,11 +72,9 @@ RUN npm install --save opencv4nodejs
 ## Install the app
 RUN mkdir /app
 WORKDIR /app
-RUN npm install ws && npm install request && npm install memfs
 COPY ./controller/scripts/run.sh /run.sh
 COPY ./protos /protos
-COPY ./controller/app.js /app/
-COPY ./controller/package.json /app/
+COPY ./controller /app/
 RUN npm install
 
 CMD /run.sh
