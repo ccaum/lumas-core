@@ -23,11 +23,17 @@ const camera_options = {
 module.exports = Camera;
 
 function Camera(controllerEvents = undefined) {
+  this.keepaliveAgent = new Agent({
+    maxSockets: 100,
+    maxFreeSockets: 10,
+    timeout: 60000,
+    freeSocketKeepAliveTimeout: 30000, // free socket keepalive for 30 seconds
+  });
+
   const self = this;
   if (controllerEvents) {
     controllerEvents.on('classifiedImg', function(imgBuf) {
       memfs.writeFile('/annotatedSnapshot.jpg', imgBuf, function() {});
-      fs.writeFile('/app/test.jpg', imgBuf, function() {});
     });
   }
 
@@ -112,14 +118,7 @@ Camera.prototype.processFeed = function () {
 Camera.prototype.amcrestMotionMonitor = function () {
   const self = this;
 
-  const keepaliveAgent = new Agent({
-    maxSockets: 100,
-    maxFreeSockets: 10,
-    timeout: 60000,
-    freeSocketKeepAliveTimeout: 30000, // free socket keepalive for 30 seconds
-  });
-
-  camera_options.agent = keepaliveAgent;
+  camera_options.agent = self.keepaliveAgent;
 
   // Connect to the camera and monitor for motion
   request(process.env.CAMERA_MOTION_URL, camera_options)
@@ -179,6 +178,16 @@ Camera.prototype.cameraMotionMonitor = function () {
   }).listen(9999);
 
   self.amcrestMotionMonitor();
+
+  setInterval(() => {
+    let socketsSize = Object.keys(this.keepaliveAgent.sockets).length;
+
+    console.log(socketsSize);
+    if (socketsSize === 0) {
+      logger.log('info', "No active sockets found to camera motion endpoint. Creating new session");
+      self.amcrestMotionMonitor();
+    }
+  }, 5000);
 }
 
 Camera.prototype.getSnapshot = function(callback) {
