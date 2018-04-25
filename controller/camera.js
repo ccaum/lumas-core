@@ -23,6 +23,7 @@ const camera_options = {
 module.exports = Camera;
 
 function Camera(controllerEvents = undefined) {
+  this.processingFeed = false;
   this.keepaliveAgent = new Agent({
     maxSockets: 100,
     maxFreeSockets: 10,
@@ -87,6 +88,13 @@ Camera.prototype.processFeed = function () {
   const self = this;
   let cap;
 
+  if (self.processingFeed) {
+    logger.log('debug', "Already processing camera feed. Ignoring");
+    return;
+  } else {
+    self.processingFeed = true;
+  }
+
   var cameraOperation = retry.operation({ maxTimeout: 60 * 1000});
 
   cameraOperation.attempt( function() {
@@ -111,6 +119,7 @@ Camera.prototype.processFeed = function () {
 
   //Stop processing after 60 seconds
   setTimeout(function() {
+    self.processingFeed = false;
     clearInterval(interval)
   }, 60000);
 }
@@ -182,7 +191,6 @@ Camera.prototype.cameraMotionMonitor = function () {
   setInterval(() => {
     let socketsSize = Object.keys(this.keepaliveAgent.sockets).length;
 
-    console.log(socketsSize);
     if (socketsSize === 0) {
       logger.log('info', "No active sockets found to camera motion endpoint. Creating new session");
       self.amcrestMotionMonitor();
