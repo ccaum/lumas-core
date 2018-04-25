@@ -6,7 +6,7 @@ var Accessory = hap.Accessory;
 var Service = hap.Service;
 var Characteristic = hap.Characteristic;
 var uuid = hap.uuid;
-var shouldNotify = true;
+var timeout = null;
 var homekitCode = process.env.HOMEKIT_CODE;
 
 // here's a fake hardware device that we'll expose to HomeKit
@@ -15,7 +15,7 @@ var MOTION_SENSOR = {
 
   getStatus: function() {
     //set the boolean here, this will be returned to the device
-    MOTION_SENSOR.motionDetected = false;
+    return MOTION_SENSOR.motionDetected;
   },
   identify: function() {
     console.log("Identify the motion sensor!");
@@ -48,10 +48,10 @@ motionSensor.on('identify', function(paired, callback) {
 });
 
 motionSensor
-  .addService(Service.MotionSensor, "Lumas Person Sensor") // services exposed to the user should have "names" like "Fake Motion Sensor" for us
+  .addService(Service.MotionSensor, "Lumas Person Sensor")
   .getCharacteristic(Characteristic.MotionDetected)
   .on('get', function(callback) {
-     MOTION_SENSOR.getStatus();
+     MOTION_SENSOR.motionDetected;
      callback(null, Boolean(MOTION_SENSOR.motionDetected));
 });
 
@@ -62,16 +62,25 @@ motionSensor.publish({
 });
 
 exports.motionDetected = function(state = true) {
-  if (shouldNotify) {
-    shouldNotify = false;
+  if (timeout != null) {
+    clearTimeout(timeout);
+  }
 
+  if (MOTION_SENSOR.motionDetected !== state) {
+    MOTION_SENSOR.motionDetected = state
     motionSensor
       .getService(Service.MotionSensor)
       .updateCharacteristic(Characteristic.MotionDetected, state);
-
-    // Do not notify again for another 10 minutes
-    setTimeout( function() {
-      shouldNotify = true;
-    }, 300000)
   }
+
+  // Do not notify again for another 5 minutes
+  timeout = setTimeout( function() {
+    motionSensor
+      .getService(Service.MotionSensor)
+      .updateCharacteristic(Characteristic.MotionDetected, false);
+
+    MOTION_SENSOR.motionDetected = false;
+
+    timeout = null;
+  }, 300000);
 };
