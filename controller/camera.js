@@ -9,20 +9,36 @@ const retry = require('retry');
 const cv = require('/node_modules/opencv4nodejs/lib/opencv4nodejs');
 const Agent = require('agentkeepalive');
 
-var snapshot;
-
-const camera_options = {
-  auth: {
-    user: process.env.CAMERA_USER,
-    pass: process.env.CAMERA_PASS,
-    sendImmediately: false
-  },
-  forever: true
-};
-
 module.exports = Camera;
 
-function Camera(controllerEvents = undefined) {
+function Camera(config, controllerEvents = undefined) {
+  this.name = config.name;
+
+  if (!config.plugin) {
+    throw("Error: Camera configuration must have a plugin defined")
+  }
+
+  this.plugin = config.plugin
+
+  //Load camera plugin here
+
+  this.address = this.plugin.config.address;
+  this.motionEndpoint = "http://" + this.address + "/cgi-bin/eventManager.cgi?action=attach&codes=[VideoMotion]";
+  this.snapshotEndpoint = "http://" + this.address + "/cgi-bin/snapshot.cgi";
+
+  this.auth = {
+    user: this.plugin.config.username,
+    pass: this.plugin.config.password,
+    sendImmediately: false
+  }
+  this.streamURL = "rtsp://" + this.auth.user +
+    ":" + this.auth.pass + "@" + this.address
+
+  this.camera_options = {
+    auth: this.auth,
+    forever: true
+  }
+
   this.processingFeed = false;
   this.keepaliveAgent = new Agent({
     maxSockets: 100,
@@ -52,12 +68,8 @@ Camera.prototype.captureCameraSnapshot = function (self) {
   var file = memfs.createWriteStream('/cameraSnapshot.jpg');
 
   request
-    .get(process.env.CAMERA_SNAPSHOT_URL, {
-      auth: {
-        user: process.env.CAMERA_USER,
-        pass: process.env.CAMERA_PASS,
-        sendImmediately: false
-      }
+    .get(self.snapshotEndpoint, {
+      auth: self.auth
     })
     .on('response', function(response) {
       if (response.statusCode == 401) {
@@ -98,7 +110,7 @@ Camera.prototype.processFeed = function () {
   var cameraOperation = retry.operation({ maxTimeout: 60 * 1000});
 
   cameraOperation.attempt( function() {
-    cap = new cv.VideoCapture(process.env.CAMERA_STREAM_URL);
+    cap = new cv.VideoCapture(self.streamURL);
   });
 
   const interval = setInterval(() => {
@@ -127,10 +139,10 @@ Camera.prototype.processFeed = function () {
 Camera.prototype.amcrestMotionMonitor = function () {
   const self = this;
 
-  camera_options.agent = self.keepaliveAgent;
+  self.camera_options.agent = self.keepaliveAgent;
 
   // Connect to the camera and monitor for motion
-  request(process.env.CAMERA_MOTION_URL, camera_options)
+  request(self.motionEndpoint, self.camera_options)
     .on('abort', function() {
       logger.log('error', "Connection to Camera aborted");
       self.amcrestMotionMonitor();
@@ -182,9 +194,9 @@ Camera.prototype.amcrestMotionMonitor = function () {
 Camera.prototype.cameraMotionMonitor = function () {
   const self = this;
 
-  http.createServer(function(request, response) {
-    self.processFeed();
-  }).listen(9999);
+  //http.createServer(function(request, response) {
+  //  self.processFeed();
+  //}).listen(9999);
 
   self.amcrestMotionMonitor();
 

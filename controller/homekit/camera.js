@@ -15,11 +15,11 @@ module.exports = {
 
 function HomeKitCamera(camera) {
   const config = {
-    name: process.env.CAMERA_NAME,
-    username: process.env.CAMERA_USER,
-    password: process.env.CAMERA_PASS,
-    address: process.env.CAMERA_ADDRESS,
-    homekitCode: process.env.HOMEKIT_CODE,
+    name: camera.name,
+    username: camera.auth.user,
+    password: camera.auth.pass,
+    address: camera.address,
+    homekitCode: "431-48-255",
     maxStreams: 2
   }
   
