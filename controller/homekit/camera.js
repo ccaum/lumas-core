@@ -16,14 +16,16 @@ module.exports = {
 function HomeKitCamera(camera) {
   const config = {
     name: camera.name,
-    username: camera.auth.user,
-    password: camera.auth.pass,
-    address: camera.address,
+    username: camera.cameraPlugin.auth.user,
+    password: camera.cameraPlugin.auth.pass,
+    address: camera.cameraPlugin.address,
     homekitCode: "431-48-255",
     maxStreams: 2
   }
   
-  config.getSnapshot = camera.getSnapshot
+  config.getSnapshot = function (callback) {
+    camera.getSnapshot(callback);
+  }
   
   config.source =  "-rtsp_transport tcp -re -i rtsp://" + config.username + ":" + config.password + "@" + config.address
   

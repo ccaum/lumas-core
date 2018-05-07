@@ -18,7 +18,7 @@ function FFMPEG(hap, cameraConfig, logger) {
   Characteristic = hap.Characteristic;
   StreamController = hap.StreamController;
   this.logger = logger;
-  this.getSnapshot = cameraConfig.getSnapshot;
+  this.cameraConfig = cameraConfig;
 
   var ffmpegOpt = cameraConfig.videoConfig;
   this.name = cameraConfig.name;
@@ -155,7 +155,7 @@ FFMPEG.prototype.handleSnapshotRequest = function(request, callback) {
   //    { this.drive.storePicture(this.name,imageBuffer); }
   //  callback(undefined, imageBuffer);
   //}.bind(this));
-  this.getSnapshot( function(imgBuffer) {
+  this.cameraConfig.getSnapshot( function(imgBuffer) {
     callback(undefined, imgBuffer);
   });
 }
