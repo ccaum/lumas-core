@@ -12,13 +12,14 @@ const Agent = require('agentkeepalive');
 module.exports = Camera;
 
 function Camera(config, controllerEvents = undefined) {
+  this.name = config.name;
+
   pluginConfig = config.plugin;
-
   plugin = require('./plugins/' + pluginConfig.name + '.js');
-
   constructor = plugin.constructor();
   this.cameraPlugin = new constructor(config.name, pluginConfig.config);
 
+  const self = this;
   this.cameraPlugin.on('frame', function(frame) {
 		// Classification expects an encoded image
 		var jpg = null;
@@ -27,6 +28,8 @@ function Camera(config, controllerEvents = undefined) {
 			self.emit('image', jpg);
 		} catch(error) { logger.log('error', error) }
 	});
+
+  EventEmitter.call(self);
 }
 
 util.inherits(Camera, EventEmitter);
