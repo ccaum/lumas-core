@@ -26,7 +26,6 @@ function Amcrest(cameraName, config) {
   this.motionEndpoint = "http://" + this.address + "/cgi-bin/eventManager.cgi?action=attach&codes=[VideoMotion]";
   this.snapshotEndpoint = "http://" + this.address + "/cgi-bin/snapshot.cgi";
 
-  console.log(config);
   this.auth = {
     user: config.username,
     pass: config.password,
