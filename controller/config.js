@@ -32,7 +32,6 @@ Config.prototype.loadConfig = function (file, callback) {
   let config = fs.readFile(file, (err, data) => {
     if (err) logger.log('error', "Could not load config file: " + err);
 
-    console.log(data);
     self.setConfig(yaml.safeLoad(data));
     callback(self);
   });
