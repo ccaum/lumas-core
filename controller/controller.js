@@ -5,6 +5,7 @@ const grpc = require('grpc');
 const util = require('util')
 const logger = require('./logger.js');
 const Camera = require('./camera.js');
+const { Config } = require('./config.js');
 const { motionDetected } = require('./homekit/motion.js');
 const { HomeKitCamera } = require('./homekit/camera.js');
 
@@ -20,11 +21,35 @@ var worker_proto_file = PROTO_DIR + '/worker.proto';
 var worker_proto = grpc.load(worker_proto_file).workers;
 
 var workers = [];
+var cameras = [];
 var events = new EventEmitter();
 
 module.exports = {
   startController: startController,
   events: events
+}
+
+function run(config) {
+  config.cameras.forEach( function(item) {
+    cam = new Camera(item, events);
+
+    var homeKitCamera = new HomeKitCamera(cam);
+
+    cam.on('image', function(img) {
+      classify(img, function(results) {
+        if (results) {
+          results['objects'].forEach(function(object) {
+            logger.log('debug', "Object recieved: " + JSON.stringify(object));
+
+            if (object.objectClass == 'person') {
+              events.emit('classifiedImg', new Buffer(results.annotatedImage.base64Image, 'base64'));
+              notifyHomeKit();
+            }
+          });
+        }
+      });
+    });
+  });
 }
 
 function startController() {
@@ -35,23 +60,8 @@ function startController() {
   server.bind('[::]:50051', grpc.ServerCredentials.createInsecure());
   server.start();
 
-  var camera = new Camera(events);
-  var homeKitCamera = new HomeKitCamera(camera);
-
-  camera.on('image', function(img) {
-    classify(img, function(results) {
-      if (results) {
-        results['objects'].forEach(function(object) {
-          logger.log('debug', "Object recieved: " + JSON.stringify(object));
-
-          if (object.objectClass == 'person') {
-            events.emit('classifiedImg', new Buffer(results.annotatedImage.base64Image, 'base64'));
-            notifyHomeKit();
-          }
-        });
-      }
-    });
-  });
+  config = new Config('/config.yml');
+  config.load(run);
 }
 
 function notifyHomeKit() {
