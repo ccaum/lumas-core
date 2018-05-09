@@ -141,20 +141,6 @@ FFMPEG.prototype.handleCloseConnection = function(connectionID) {
 }
 
 FFMPEG.prototype.handleSnapshotRequest = function(request, callback) {
-  //let resolution = request.width + 'x' + request.height;
-  //var imageSource = this.ffmpegImageSource !== undefined ? this.ffmpegImageSource : this.ffmpegSource;
-  //let ffmpeg = spawn('ffmpeg', (imageSource + ' -t 1 -s '+ resolution + ' -f image2 -').split(' '), {env: process.env});
-  //var imageBuffer = Buffer(0);
-  //this.logger.log("info", "Snapshot from " + this.name + " at " + resolution);
-  //this.logger.log("debug", 'ffmpeg '+imageSource + ' -t 1 -s '+ resolution + ' -f image2 -');
-  //ffmpeg.stdout.on('data', function(data) {
-  //  imageBuffer = Buffer.concat([imageBuffer, data]);
-  //});
-  //ffmpeg.on('close', function(code) {
-  //  if ( this.uploader )
-  //    { this.drive.storePicture(this.name,imageBuffer); }
-  //  callback(undefined, imageBuffer);
-  //}.bind(this));
   this.cameraConfig.getSnapshot( function(imgBuffer) {
     callback(undefined, imgBuffer);
   });
