@@ -190,33 +190,13 @@ Amcrest.prototype.cameraMotionMonitor = function () {
 }
 
 Amcrest.prototype.getSnapshot = function(callback) {
-  var age;
-  var file;
+  const file = "/cameraSnapshot.jpg"
 
-  memfs.stat('/annotatedSnapshot.jpg', function(err, stats) {
-    if (stats) {
-      age = Date.now() - stats.mtimeMs;
-      logger.log("debug", "Annotated snapshot is " + age + "ms old");
-
-      //Only send the annotated snapshot if it's less than 10 seconds old
-      if (age < 10000) {
-        logger.log("debug", "Serving annotated camera snapshot");
-        file = '/annotatedSnapshot.jpg';
-      } else {
-        logger.log("debug", "Serving cached camera snapshot");
-        file = '/cameraSnapshot.jpg';
-      }
-    } else {
-      logger.log("debug", "Serving cached camera snapshot");
-      file = '/cameraSnapshot.jpg';
+  memfs.readFile(file, function(err, buf) {
+    if (err) {
+      logger.log("error", "Could not read " + file + " from memfs: " + err.message);
     }
 
-    memfs.readFile(file, function(err, buf) {
-      if (err) {
-        logger.log("error", "Could not read " + file + " from memfs: " + err.message);
-      }
-
-      callback(buf);
-    });
+    callback(buf);
   });
 }

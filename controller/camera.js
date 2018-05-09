@@ -11,7 +11,7 @@ const Agent = require('agentkeepalive');
 
 module.exports = Camera;
 
-function Camera(config, controllerEvents = undefined) {
+function Camera(config, controllerEvents) {
   this.name = config.name;
 
   pluginConfig = config.plugin;
@@ -20,6 +20,13 @@ function Camera(config, controllerEvents = undefined) {
   this.cameraPlugin = new constructor(config.name, pluginConfig.config);
 
   const self = this;
+  if (controllerEvents) {
+    controllerEvents.on('classifiedImg', function(imgBuf) {
+      logger.log('debug', "Caching annotated snapshot");
+      memfs.writeFile('/annotatedSnapshot.jpg', imgBuf, function() {});
+    });
+  }
+
   this.cameraPlugin.on('frame', function(frame) {
 		// Classification expects an encoded image
 		var jpg = null;
@@ -35,5 +42,31 @@ function Camera(config, controllerEvents = undefined) {
 util.inherits(Camera, EventEmitter);
 
 Camera.prototype.getSnapshot = function (callback) {
-  this.cameraPlugin.getSnapshot(callback)
+  const self = this;
+  const file = "/annotatedSnapshot.jpg"
+
+  memfs.stat(file, function(err, stats) {
+    if (stats) {
+      age = Date.now() - stats.mtimeMs;
+      logger.log("debug", "Annotated snapshot for camera " + self.name + " is " + age + "ms old");
+
+      //Only send the annotated snapshot if it's less than 10 seconds old
+      if (age < 10000) {
+        logger.log("debug", "Serving annotated camera snapshot");
+        memfs.readFile(file, function(err, buf) {
+          if (err) {
+            logger.log("error", "Could not read " + file + " from memfs: " + err.message);
+          }
+
+          callback(buf);
+        });
+      } else {
+        logger.log("debug", "Annotated snapshot too old. Serving snapshot from camera plugin");
+        self.cameraPlugin.getSnapshot(callback)
+      }
+    } else {
+      logger.log("debug", "Serving snapshot from camera plugin");
+      self.cameraPlugin.getSnapshot(callback)
+    }
+  });
 }
