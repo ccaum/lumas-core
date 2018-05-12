@@ -8,15 +8,6 @@ services:
       - ./logs:/app/logs
   controller:
     restart: always
-    environment:
-      - CAMERA_STREAM_URL=rtsp://<CAMERA USERNAME>:<CAMERA PASSWORD>@<CAMERA IP>
-      - CAMERA_MOTION_URL=http://<AMCREST CAMERA IP>/cgi-bin/eventManager.cgi?action=attach&codes=[VideoMotion]
-      - CAMERA_SNAPSHOT_URL=http://<AMCREST CAMERA IP>/cgi-bin/snapshot.cgi
-      - CAMERA_ADDRESS=<AMCREST CAMERA IP>
-      - CAMERA_USER=<AMCREST CAMERA USERNAME>
-      - CAMERA_PASS=<AMCREST CAMERA PASSWORD>
-      - LOG_LEVEL=info
-      - TZ=America/Los_Angeles
     image: lumas/lumas-controller
     network_mode: host
     volumes:
