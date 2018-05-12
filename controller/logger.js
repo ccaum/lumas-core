@@ -12,6 +12,18 @@ const appendTimestamp = format((info, opts) => {
   return info;
 });
 
+function config(globalConfig) {
+  if (globalConfig.loglevel) {
+    loglevel = globalConfig.loglevel;
+  } else {
+    loglevel = 'info'
+  }
+
+  if (globalConfig.timezone) {
+    timezone = globalConfig.timezone
+  }
+}
+
 const logger = createLogger({
   level: loglevel,
   format: combine(
@@ -26,4 +38,4 @@ const logger = createLogger({
   ]
 });
 
-module.exports = logger;
+module.exports = {logger, config};

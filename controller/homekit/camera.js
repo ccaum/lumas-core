@@ -1,6 +1,6 @@
 const hap = require('hap-nodejs')
 const fp = require("find-free-port")
-const logger = require('../logger.js')
+const logger = require('../logger.js').logger
 const { FFMPEG } = require('./ffmpeg.js')
 
 hap.init();

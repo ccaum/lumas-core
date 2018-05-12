@@ -3,7 +3,8 @@ const fs = require('fs');
 const async = require('async');
 const grpc = require('grpc');
 const util = require('util')
-const logger = require('./logger.js');
+const logger = require('./logger.js').logger;
+const logConfig = require('./logger.js').config;
 const Camera = require('./camera.js');
 const { Config } = require('./config.js');
 const { motionDetected } = require('./homekit/motion.js');
@@ -30,6 +31,14 @@ module.exports = {
 }
 
 function run(config) {
+  //Set the logger configurations
+  let globalConfig = Object.assign({}, config.global)
+  logConfig(config.global);
+
+  //config.plugins.forEach( function(item) {
+    //plugin = require('./plugins/' + item + '.js');
+  //})
+
   config.cameras.forEach( function(item) {
     cam = new Camera(item, events);
 

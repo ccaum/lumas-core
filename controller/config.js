@@ -1,6 +1,6 @@
 const fs = require('fs');
 const yaml = require('js-yaml');
-const logger = require('./logger.js');
+const logger = require('./logger.js').logger;
 
 module.exports = {
   Config: Config
@@ -15,6 +15,7 @@ Config.prototype.load = function (callback) {
   this.plugins;
   this.cameras;
   this.conditions;
+  this.global;
 
   this.loadConfig(this.file, callback);
 }
@@ -24,6 +25,7 @@ Config.prototype.setConfig = function (config) {
   this.plugins = this.config.plugins;
   this.cameras = this.config.cameras;
   this.conditions = this.conditions;
+  this.global = this.config.global;
 }
 
 Config.prototype.loadConfig = function (file, callback) {
