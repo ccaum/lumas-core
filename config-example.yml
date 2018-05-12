@@ -1,0 +1,16 @@
+---
+global:
+  - timezone: "America/Los_Angeles"
+  - loglevel: "debug"
+plugins:
+  - homekit:
+      homekit_code: "431-48-255"
+cameras:
+  - name: "Backyard Camera"
+    plugin:
+      name: amcrest
+      config:
+        address: "<CAMERA IP OR DNS ADDRESS>"
+        username: "<CAMERA USERNAME>"
+        password: "<CAMERA PASSWORD>"
+

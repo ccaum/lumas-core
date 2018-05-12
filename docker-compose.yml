@@ -11,4 +11,5 @@ services:
     image: lumas/lumas-controller
     network_mode: host
     volumes:
+      - ./config.yml:/config.yml
       - ./logs:/app/logs
