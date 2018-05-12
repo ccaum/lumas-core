@@ -1,10 +1,8 @@
 ---
 global:
-  - timezone: "America/Los_Angeles"
-  - loglevel: "debug"
-plugins:
-  - homekit:
-      homekit_code: "431-48-255"
+  timezone: "America/Los_Angeles"
+  loglevel: "debug"
+  homekit_code: "431-48-255"
 cameras:
   - name: "Backyard Camera"
     plugin:
