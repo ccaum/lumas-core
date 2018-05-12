@@ -18,23 +18,70 @@ Presently it also only supports one camera at a time.
 ### Configuring Lumas
 
 1) Copy the docker-compose.yml file from this repo to the machine where you want to run Lumas
-2) Modify the parameters in the docker-compose.yml file for your camera
+2) In the same directory, create a file called config.yml. There's an example configuration file in this repo.
 
-**docker-compose.yml parameters**
+There are three sections to the configuration file
+* global
+* plugins
+* cameras
 
-* CAMERA_STREAM_URL - The rtsp URL to your camera's stream (e.g. rtsp://admin:adminpass@192.168.2.43)
-* CAMERA_MOTION_URL - The motion API endpoint to monitor for motion. Motion activates the stream processing.
-* CAMERA_SNAPSHOT_URL - If your camera supports it, the URL endpoint to get a snapshot from the camera
-* CAMERA_ADDRESS - The IP or hostname of the camera
-* CAMERA_USER - The username to authenticate to the camera with
-* CAMERA_PASS - The password to authenticate to the camera with 
-* HOMEKIT_CODE - The HomeKit code to use. (e.g. 431-48-159) 
-* LOG_LEVEL - Options are ['info','warn','error','debug']. Default is 'info'
-* TZ - The timezone you're in. Full list [here](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones). Default is GMT+0
+The basic configuration file structure looks like this:
+```
+---
+global:
+  <global configuraiton parameters>
+cameras:
+  - name: "Camera Name"
+    plugin:
+      name: <camera plugin>
+      config:
+        <plugin parameters>
+```
+
+### Global parameters
+
+In the global section, the following values are available:
+
+* timezone - The timezone you're in. Full list [here](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones). Default is "Europe/London"
+* loglevel - Options are ['info','warn','error','debug']. Default is 'info'
+* homekit_code - The HomeKit code to use
+
+Example:
+```
+---
+global:
+  timezone: "America/Los_Angeles"
+  loglevel: "info"
+  homekit_code: "431-48-255"
+```
+
+### Cameras parameters
+
+The `cameras` section of the configuration is a list of cameras. Currently
+Lumas ony supports one camera at a time. Multi-camera support will be added
+soon.
+
+Also, currently only Amcrest cameras are support. ONVIF compliant camera support will be added soon.
+
+Example:
+```
+---
+cameras:
+  - name: "<Camera Name>"
+    plugin:
+      name: amcrest
+      config:
+        address: "<CAMERA IP OR DNS ADDRESS>"
+        username: "<CAMERA USERNAME>"
+        password: "<CAMERA PASSWORD>"
+```
 
 ### Logs
 
-You can mount any directory to the /app/logs directory in the containers. The easiest thing to do get started is create a directory in the current working directory with `mkdir logs`. That will fill up fast as the application doesn't rotate logs, so you'll probably want to move that to a better location.
+By default, the application creates a `logs` directory in the same directory as
+the docker-compose.yml file. You can change the location of the logs by
+modifying the mount point in the docker-compose.yml file. This is recommended
+as the logs are not rotated and so they'll fill up over time.
 
 ### Running
 
