@@ -4,3 +4,4 @@ controller/node_modules
 controller/persist
 controller/package-lock.json
 controller/yarn.lock
+config.yml

@@ -123,3 +123,6 @@ docker-compose.dev.yml
 logs
 
 persist
+
+# Config files
+config.yml
