@@ -31,8 +31,13 @@ function Amcrest(cameraName, config) {
     pass: config.password,
     sendImmediately: false
   }
-  this.streamURL = "rtsp://" + this.auth.user +
-    ":" + this.auth.pass + "@" + this.address
+
+  if (this.auth.user && this.auth.pass) {
+    this.streamURL = "rtsp://" + this.auth.user +
+      ":" + this.auth.pass + "@" + this.address
+  } else {
+    this.streamURL = "rtsp://" + this.address
+  }
 
   this.processingFeed = false;
   this.keepaliveAgent = new Agent({
