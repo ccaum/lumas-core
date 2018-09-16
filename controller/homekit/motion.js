@@ -1,4 +1,6 @@
-var hap = require('hap-nodejs')
+const hap = require('hap-nodejs')
+const fp = require("find-free-port")
+const logger = require('../logger.js').logger
 hap.init();
 
 // HAP necessities
@@ -7,68 +9,56 @@ var Service = hap.Service;
 var Characteristic = hap.Characteristic;
 var uuid = hap.uuid;
 var timeout = null;
-var homekitCode = process.env.HOMEKIT_CODE;
 
-// here's a fake hardware device that we'll expose to HomeKit
-var MOTION_SENSOR = {
-  motionDetected: false,
-
-  getStatus: function() {
-    //set the boolean here, this will be returned to the device
-    return MOTION_SENSOR.motionDetected;
-  },
-  identify: function() {
-    console.log("Identify the motion sensor!");
-  }
+module.exports = {
+  HomeKitMotion: HomeKitMotion,
 }
 
-// Generate a consistent UUID for our Motion Sensor Accessory that will remain the same even when
-// restarting our server. We use the `uuid.generate` helper function to create a deterministic
-// UUID based on an arbitrary "namespace" and the word "motionsensor".
-var motionSensorUUID = uuid.generate('hap-nodejs:accessories:motionsensor');
+function HomeKitMotion(name, homekit_code) {
+  this.motion = false;
 
-// This is the Accessory that we'll return to HAP-NodeJS that represents our fake motionSensor.
-var motionSensor = exports.accessory = new Accessory('Lumas Person Sensor', motionSensorUUID);
+  motionSensorUUID = uuid.generate("hap-nodejs:accessories:motionsensor:" + name);
+  
+  // This is the Accessory that we'll return to HAP-NodeJS that represents our fake motionSensor.
+  this.motionSensor = exports.accessory = new Accessory("Lumas " + name + " Motion Sensor", motionSensorUUID);
+  var motionSensor = this.motionSensor;
+   
+  // listen for the "identify" event for this Accessory
+  this.motionSensor.on('identify', function(paired, callback) {
+    callback(); // success
+  });
+  
+  this.motionSensor
+    .addService(Service.MotionSensor, "Motion Sensor")
+    .getCharacteristic(Characteristic.MotionDetected)
+    .on('get', function(callback) {
+       this.motion;
+       callback(null, Boolean(this.motion));
+  });
 
-// Add properties for publishing (in case we're using Core.js and not BridgedCore.js)
-motionSensor.username = "1A:2B:3D:4A:1E:AD";
-motionSensor.pincode = homekitCode;
+  // Find a free port to run the motion HAP on
+  fp(5260, 5299, '0.0.0.0', function(err, freePort) {
+    logger.log("info", "Running motion " + name + " on port " + freePort);
+  
+    // Publish the motion sensor on the local network.
+    motionSensor.publish({
+      username: "DD:22:12:BB:AA:FF",
+      port: freePort,
+      pincode: homekit_code,
+      category: Accessory.Categories.MotionSensor
+    }, true);
+  })
 
-// set some basic properties (these values are arbitrary and setting them is optional)
-motionSensor
-  .getService(Service.AccessoryInformation)
-  .setCharacteristic(Characteristic.Manufacturer, "Oltica")
-  .setCharacteristic(Characteristic.Model, "Rev-1")
-  .setCharacteristic(Characteristic.SerialNumber, "A1S2NASF88EW");
+};
 
-// listen for the "identify" event for this Accessory
-motionSensor.on('identify', function(paired, callback) {
-  MOTION_SENSOR.identify();
-  callback(); // success
-});
-
-motionSensor
-  .addService(Service.MotionSensor, "Lumas Person Sensor")
-  .getCharacteristic(Characteristic.MotionDetected)
-  .on('get', function(callback) {
-     MOTION_SENSOR.motionDetected;
-     callback(null, Boolean(MOTION_SENSOR.motionDetected));
-});
-
-motionSensor.publish({
-  port: 51826,
-  username: motionSensor.username,
-  pincode: motionSensor.pincode
-});
-
-exports.motionDetected = function(state = true) {
+HomeKitMotion.prototype.motionDetected = function(state = true) {
   if (timeout != null) {
     clearTimeout(timeout);
   }
 
-  if (MOTION_SENSOR.motionDetected !== state) {
-    MOTION_SENSOR.motionDetected = state
-    motionSensor
+  if (this.motion !== state) {
+    this.motion = state
+    this.motionSensor
       .getService(Service.MotionSensor)
       .updateCharacteristic(Characteristic.MotionDetected, state);
   }
@@ -79,8 +69,9 @@ exports.motionDetected = function(state = true) {
       .getService(Service.MotionSensor)
       .updateCharacteristic(Characteristic.MotionDetected, false);
 
-    MOTION_SENSOR.motionDetected = false;
+    this.motion = false;
 
     timeout = null;
   }, 300000);
 };
+

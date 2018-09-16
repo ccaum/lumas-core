@@ -55,7 +55,7 @@ function HomeKitCamera(camera, homekit_code) {
   
     // Publish the camera on the local network.
     cameraAccessory.publish({
-      username: "EC:22:3D:D3:CE:CE",
+      username: "22:22:3D:D3:CE:CE",
       port: freePort,
       pincode: config.homekitCode,
       category: Accessory.Categories.CAMERA

@@ -6,7 +6,7 @@ const util = require('util')
 const logConfig = require('./logger.js').config;
 const Camera = require('./camera.js');
 const { Config } = require('./config.js');
-const { motionDetected } = require('./homekit/motion.js');
+const { HomeKitMotion } = require('./homekit/motion.js');
 const { HomeKitCamera } = require('./homekit/camera.js');
 
 if (fs.existsSync('/protos')) {
@@ -36,9 +36,21 @@ function loadLogger(globalConfig) {
   logger = require('./logger.js').logger;
 }
 
+function generateHomeKitCode(base_code, increment) {
+  codeElements = base_code.split('-')
+  codeElements[0] = parseInt(codeElements[0]) + increment
+  code = codeElements.join('-')
+  return code
+}
+
 function run(config) {
   let globalConfig = Object.assign({}, config.global)
   let homekit_code = globalConfig.homekit_code
+  let camera_homekit_code = generateHomeKitCode(homekit_code, 1)
+  let motion_homekit_code = generateHomeKitCode(homekit_code, 2)
+
+  console.log("CAMERA CODE: " + camera_homekit_code);
+  console.log("MOTION CODE: " + motion_homekit_code);
 
   loadLogger(globalConfig)
 
@@ -49,7 +61,8 @@ function run(config) {
   config.cameras.forEach( function(item) {
     cam = new Camera(item, events);
 
-    var homeKitCamera = new HomeKitCamera(cam, homekit_code);
+    var homeKitCamera = new HomeKitCamera(cam, camera_homekit_code);
+    var homeKitMotion = new HomeKitMotion(cam.name, motion_homekit_code);
 
     cam.on('image', function(img) {
       classify(img, function(results) {
@@ -59,7 +72,7 @@ function run(config) {
 
             if (object.objectClass == 'person') {
               events.emit('classifiedImg', new Buffer(results.annotatedImage.base64Image, 'base64'));
-              notifyHomeKit();
+              homeKitMotion.motionDetected(true);
             }
           });
         }
@@ -78,10 +91,6 @@ function startController() {
 
   config = new Config('/config.yml');
   config.load(run);
-}
-
-function notifyHomeKit() {
-  motionDetected(true);
 }
 
 function registerWorker(request, callback) {
