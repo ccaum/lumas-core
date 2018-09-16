@@ -13,13 +13,13 @@ module.exports = {
   HomeKitCamera: HomeKitCamera
 }
 
-function HomeKitCamera(camera) {
+function HomeKitCamera(camera, homekit_code) {
   const config = {
     name: camera.name,
     username: camera.cameraPlugin.auth.user,
     password: camera.cameraPlugin.auth.pass,
     address: camera.cameraPlugin.address,
-    homekitCode: "431-48-255",
+    homekitCode: homekit_code,
     maxStreams: 2
   }
   

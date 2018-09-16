@@ -3,7 +3,6 @@ const fs = require('fs');
 const async = require('async');
 const grpc = require('grpc');
 const util = require('util')
-const logger = require('./logger.js').logger;
 const logConfig = require('./logger.js').config;
 const Camera = require('./camera.js');
 const { Config } = require('./config.js');
@@ -20,6 +19,7 @@ var image_classification_proto_file = PROTO_DIR + '/image_classification.proto';
 var image_classification_proto = grpc.load(image_classification_proto_file).classification;
 var worker_proto_file = PROTO_DIR + '/worker.proto';
 var worker_proto = grpc.load(worker_proto_file).workers;
+var logger;
 
 var workers = [];
 var cameras = [];
@@ -30,10 +30,17 @@ module.exports = {
   events: events
 }
 
+function loadLogger(globalConfig) {
+  logConfig({timezone: globalConfig.timezone, loglevel: globalConfig.loglevel});
+  //Load the logger after we've configured it
+  logger = require('./logger.js').logger;
+}
+
 function run(config) {
-  //Set the logger configurations
   let globalConfig = Object.assign({}, config.global)
-  logConfig(config.global);
+  let homekit_code = globalConfig.homekit_code
+
+  loadLogger(globalConfig)
 
   //config.plugins.forEach( function(item) {
     //plugin = require('./plugins/' + item + '.js');
@@ -42,7 +49,7 @@ function run(config) {
   config.cameras.forEach( function(item) {
     cam = new Camera(item, events);
 
-    var homeKitCamera = new HomeKitCamera(cam);
+    var homeKitCamera = new HomeKitCamera(cam, homekit_code);
 
     cam.on('image', function(img) {
       classify(img, function(results) {

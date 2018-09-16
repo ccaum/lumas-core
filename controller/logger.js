@@ -3,8 +3,8 @@ const moment = require('moment-timezone');
 const { createLogger, format, transports } = require('winston');
 const { combine, timestamp, label, prettyPrint } = format;
 
-loglevel = process.env.LOG_LEVEL;
-timezone = process.env.TZ;
+loglevel = "info"
+timezone = "Europe/London"
 
 const appendTimestamp = format((info, opts) => {
   if(opts.tz)
@@ -12,15 +12,15 @@ const appendTimestamp = format((info, opts) => {
   return info;
 });
 
-function config(globalConfig) {
-  if (globalConfig.loglevel) {
-    loglevel = globalConfig.loglevel;
+function config(configHash) {
+  if (configHash.loglevel) {
+    loglevel = configHash.loglevel;
   } else {
     loglevel = 'info'
   }
 
-  if (globalConfig.timezone) {
-    timezone = globalConfig.timezone
+  if (configHash.timezone) {
+    timezone = configHash.timezone
   }
 }
 
