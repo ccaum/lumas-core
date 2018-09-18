@@ -8,7 +8,6 @@ var Accessory = hap.Accessory;
 var Service = hap.Service;
 var Characteristic = hap.Characteristic;
 var uuid = hap.uuid;
-var timeout = null;
 
 module.exports = {
   HomeKitMotion: HomeKitMotion,
@@ -16,6 +15,7 @@ module.exports = {
 
 function HomeKitMotion(name, homekit_code) {
   this.motion = false;
+  this.timeout = null;
 
   motionSensorUUID = uuid.generate("hap-nodejs:accessories:motionsensor:" + name);
   
@@ -52,26 +52,28 @@ function HomeKitMotion(name, homekit_code) {
 };
 
 HomeKitMotion.prototype.motionDetected = function(state = true) {
-  if (timeout != null) {
-    clearTimeout(timeout);
+  let self = this;
+
+  if (self.timeout != null) {
+    clearTimeout(self.timeout);
   }
 
-  if (this.motion !== state) {
-    this.motion = state
-    this.motionSensor
+  if (self.motion !== state) {
+    self.motion = state
+    self.motionSensor
       .getService(Service.MotionSensor)
       .updateCharacteristic(Characteristic.MotionDetected, state);
   }
 
   // Do not notify again for another 5 minutes
-  timeout = setTimeout( function() {
-    motionSensor
+  self.timeout = setTimeout( function() {
+    self.motionSensor
       .getService(Service.MotionSensor)
       .updateCharacteristic(Characteristic.MotionDetected, false);
 
-    this.motion = false;
+    self.motion = false;
 
-    timeout = null;
+    self.timeout = null;
   }, 300000);
 };
 
