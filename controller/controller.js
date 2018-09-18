@@ -72,7 +72,7 @@ function run(config) {
 
             if (object.objectClass == 'person') {
               events.emit('classifiedImg', new Buffer(results.annotatedImage.base64Image, 'base64'));
-              homeKitMotion.motionDetected(true);
+              homeKitMotion.motionDetected();
             }
           });
         }
