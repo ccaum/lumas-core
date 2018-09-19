@@ -62,7 +62,7 @@ function run(config) {
     var homeKitCamera = new HomeKitCamera(cam, streamer.camera_code, streamer.camera_id)
     var homeKitMotion = new HomeKitMotion(cam.name, streamer.motion_code, streamer.motion_id)
 
-    cam.on('image', function(img) {
+    cam.on('frame', function(img) {
       classify(img, function(results) {
         if (results) {
           results['objects'].forEach(function(object) {

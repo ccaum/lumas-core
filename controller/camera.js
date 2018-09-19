@@ -27,15 +27,6 @@ function Camera(config, controllerEvents) {
     });
   }
 
-  this.cameraPlugin.on('frame', function(frame) {
-		// Classification expects an encoded image
-		var jpg = null;
-		try {
-			jpg = cv.imencode('.jpg', frame);
-			self.emit('image', jpg);
-		} catch(error) { logger.log('error', error) }
-	});
-
   EventEmitter.call(self);
 }
 

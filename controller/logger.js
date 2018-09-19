@@ -3,7 +3,7 @@ const moment = require('moment-timezone');
 const { createLogger, format, transports } = require('winston');
 const { combine, timestamp, label, prettyPrint } = format;
 
-loglevel = "info"
+loglevel = "debug"
 timezone = "Europe/London"
 
 const appendTimestamp = format((info, opts) => {
