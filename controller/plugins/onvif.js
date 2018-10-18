@@ -48,6 +48,6 @@ ONVIF.prototype.processFeed = function () {
   }, 0);
 }
 
-Amcrest.prototype.getSnapshot = function(callback) {
+ONVIF.prototype.getSnapshot = function(callback) {
   imencode('.jpg', this.frame);
 }
