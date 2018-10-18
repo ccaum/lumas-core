@@ -19,7 +19,6 @@ function constructor() {
 
 function FFMPEG(cameraName, config) {
   const self = this;
-
   this.name = cameraName;
   this.streamURL = config.rtsp;
   this.frame;
@@ -29,15 +28,19 @@ function FFMPEG(cameraName, config) {
     pass: config.password,
   }
 
-  self.processFeed();
+  this.processFeed();
   EventEmitter.call(self);
 }
+
+util.inherits(FFMPEG, Camera);
 
 FFMPEG.prototype.processFeed = function () {
   const self = this;
   var frameFile = memfs.createWriteStream('/frame.jpg');
   var cameraOperation = retry.operation({ maxTimeout: 60 * 1000});
 
+  console.log('emitting');
+  self.emit('frame', 'hi');
   cameraOperation.attempt( function() {
     let ffmpegCommand = ['-y', '-i', self.streamURL,
       '-rtsp_transport', 'tcp',
@@ -48,7 +51,6 @@ FFMPEG.prototype.processFeed = function () {
       '/frame.jpg']
 
       let ffmpeg = spawn('ffmpeg', ffmpegCommand, {env: process.env});
-      logger.log("debug", "ffmpeg " + ffmpegCommand);
 
       ffmpeg.on('error', function(err) {
         logger.log("error", "Got error from FFMPEG: " + err);
@@ -61,41 +63,17 @@ FFMPEG.prototype.processFeed = function () {
           logger.log("error", "ERROR: FFmpeg exited with code " + code);
         }
       });
-
-    //ffmpeg({source: self.streamURL, logger: logger})
-      //.videoCodec('')
-      //.addOption('-r 2')
-      //.addOption('-update')
-      //.output('/frame.jpg')
-      //.output(frameFile, {end:true})
-      //.audioCodec('copy')
-      //.addOption('-f', 'rtsp')
-      //.addOption('rtsp://127.0.0.1:1234/')
-      //.outputOptions(['-f rtsp', '-r 10', 'rtsp://127.0.0.1:1234/'])
-      //.save(frameFile, {end:true})
-      //.on('error', function(err, stdout, stderr) {
-        //logger.log('error', 'Could not process feed: ' + err.message);
-      //})
-      //.run();
   });
 
   const interval = setInterval(() => {
-    let frame = ""
-
     memfs.readFile("/frame.jpg", "utf8", function(err, data) {
       if (err) {
         logger.log("error", "Could not read " + "/frame.jpg from memfs: " + err.message);
       }
 
-      self.frame = data;
-    });
-
-    if (self.frame && !self.frame.empty) {
-
-      if (motion.detect(self.frame)) {
-        self.emit('frame', self.frame);
-      }
-    }
+      this.frame = data;
+      this.emit('frame', data);
+    }.bind(self));
   }, 0);
 }
 
