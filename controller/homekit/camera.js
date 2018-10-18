@@ -19,6 +19,7 @@ function HomeKitCamera(camera, homekit_code) {
     username: camera.cameraPlugin.auth.user,
     password: camera.cameraPlugin.auth.pass,
     address: camera.cameraPlugin.address,
+    id: camera.id,
     homekitCode: homekit_code,
     maxStreams: 2
   }
@@ -55,7 +56,7 @@ function HomeKitCamera(camera, homekit_code) {
   
     // Publish the camera on the local network.
     cameraAccessory.publish({
-      username: "22:22:3D:D3:CE:CE",
+      username: config.id,
       port: freePort,
       pincode: config.homekitCode,
       category: Accessory.Categories.CAMERA
