@@ -39,15 +39,15 @@ FFMPEG.prototype.processFeed = function () {
   var cameraOperation = retry.operation({ maxTimeout: 60 * 1000});
 
   cameraOperation.attempt( function() {
-    let ffmpegCommand = ' -y -i ' + self.streamURL + 
-      ' -rtsp_transport tcp' +
-      ' -err_detect ignore_err' +
-      ' -map 0:0' +
-      ' -f image2' +
-      ' -updatefirst 1' +
-      ' /frame.jpg'
+    let ffmpegCommand = ['-y', '-i', self.streamURL,
+      '-rtsp_transport', 'tcp',
+      '-err_detect','ignore_err',
+      '-map', '0:0',
+      '-f', 'image2',
+      '-updatefirst','1',
+      '/frame.jpg']
 
-      let ffmpeg = spawn('ffmpeg', ffmpegCommand.split(' '), {env: process.env});
+      let ffmpeg = spawn('ffmpeg', ffmpegCommand, {env: process.env});
       logger.log("debug", "ffmpeg " + ffmpegCommand);
 
       ffmpeg.on('error', function(err) {
