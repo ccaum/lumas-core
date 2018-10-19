@@ -49,9 +49,6 @@ function run(config) {
   let camera_homekit_code = generateHomeKitCode(homekit_code, 1)
   let motion_homekit_code = generateHomeKitCode(homekit_code, 2)
 
-  console.log("CAMERA CODE: " + camera_homekit_code);
-  console.log("MOTION CODE: " + motion_homekit_code);
-
   loadLogger(globalConfig)
 
   //config.plugins.forEach( function(item) {
@@ -60,9 +57,10 @@ function run(config) {
 
   config.cameras.forEach( function(item) {
     cam = new Camera(item, events);
+    streamer = item.streamers[0]
 
-    var homeKitCamera = new HomeKitCamera(cam, camera_homekit_code);
-    var homeKitMotion = new HomeKitMotion(cam.name, motion_homekit_code);
+    var homeKitCamera = new HomeKitCamera(cam, streamer.camera_code, streamer.camera_id)
+    var homeKitMotion = new HomeKitMotion(cam.name, streamer.motion_code, streamer.motion_id)
 
     cam.on('image', function(img) {
       classify(img, function(results) {

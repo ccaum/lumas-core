@@ -13,7 +13,7 @@ module.exports = {
   HomeKitMotion: HomeKitMotion,
 }
 
-function HomeKitMotion(name, homekit_code) {
+function HomeKitMotion(name, homekit_code, homekit_id) {
   this.motion = false;
   this.timeout = null;
 
@@ -42,13 +42,12 @@ function HomeKitMotion(name, homekit_code) {
   
     // Publish the motion sensor on the local network.
     motionSensor.publish({
-      username: "DD:22:12:BB:AA:FF",
+      username: homekit_id,
       port: freePort,
       pincode: homekit_code,
       category: Accessory.Categories.MotionSensor
     }, true);
   })
-
 };
 
 HomeKitMotion.prototype.motionDetected = function(state = true) {
