@@ -22,6 +22,10 @@ function FFMPEG(cameraName, config) {
   this.name = cameraName;
   this.streamURL = config.rtsp;
   this.frame;
+  this.frameDirectory = '/cameras/' + "test/";
+
+  memfs.mkdirSync('/cameras/');
+  memfs.mkdirSync('/cameras/' + 'test');
 
   this.auth = {
     user: config.username,
@@ -34,51 +38,47 @@ function FFMPEG(cameraName, config) {
 
 util.inherits(FFMPEG, Camera);
 
-FFMPEG.prototype.processFeed = function () {
-  const self = this;
-  var frameFile = memfs.createWriteStream('/frame.jpg');
-  var cameraOperation = retry.operation({ maxTimeout: 60 * 1000});
+FFMPEG.prototype.processFrame = function (frame) {
+  var file = this.frameDirectory + "/frame" + frame + ".jpg";
 
-  console.log('emitting');
-  self.emit('frame', 'hi');
-  cameraOperation.attempt( function() {
-    let ffmpegCommand = ['-y', '-i', self.streamURL,
-      '-rtsp_transport', 'tcp',
-      '-err_detect','ignore_err',
-      '-map', '0:0',
-      '-f', 'image2',
-      '-updatefirst','1',
-      '/frame.jpg']
+  memfs.readFile(file, function(err, buf) {
+    if (err) {
+      logger.log('error', "Could not read frame file: " + err.message);
+    }
 
-      let ffmpeg = spawn('ffmpeg', ffmpegCommand, {env: process.env});
-
-      ffmpeg.on('error', function(err) {
-        logger.log("error", "Got error from FFMPEG: " + err);
-      });
-
-      ffmpeg.on('close', (code) => {
-        if(code == null || code == 0 || code == 255){
-          logger.log("info", "Stopped streaming");
-        } else {
-          logger.log("error", "ERROR: FFmpeg exited with code " + code);
-        }
-      });
+    this.emit('frame', buf);
   });
 
-  const interval = setInterval(() => {
-    memfs.readFile("/frame.jpg", "utf8", function(err, data) {
-      if (err) {
-        logger.log("error", "Could not read " + "/frame.jpg from memfs: " + err.message);
-      }
+  memfs.rm(file);
+}
 
-      this.frame = data;
-      this.emit('frame', data);
-    }.bind(self));
-  }, 0);
+FFMPEG.prototype.processFeed = function () {
+  const self = this;
+  var cameraOperation = retry.operation({ maxTimeout: 60 * 1000});
+  var lastFrameEnqueued = 0;
+
+  ffmpeg(self.streamURL)
+  .outputOptions(['-rtsp_transport tcp', '-map 0:0', '-f image2'])
+  .on('start', function(commandLine) {
+    logger.log('debug', "Running ffmpeg with command: " + commandLine)
+  })
+  .on('progress', function(progress) {
+    var n = lastFrameEnqueued + 1;
+    lastFrameEnqueued = progress.frames - 1;
+
+    for (; n < progress.frames; n++) {
+      processFrame(n);
+    }
+  })
+  .on('stderr', function(err) {
+    logger.log('error', err);
+  })
+  .save(self.frameDirectory + '/frame%d.jpg')
+  //.save(self.frameDirectory + '/snapshot.jpg')
 }
 
 FFMPEG.prototype.getSnapshot = function(callback) {
-  const file = "/frame.jpg"
+  const file = this.frameDirectory + '/' + snapshot.jpg;
 
   memfs.readFile(file, function(err, buf) {
     if (err) {
