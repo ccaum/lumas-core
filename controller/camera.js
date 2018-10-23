@@ -12,14 +12,17 @@ const Agent = require('agentkeepalive');
 module.exports = Camera;
 
 function Camera(config, controllerEvents) {
+  const self = this;
   this.name = config.name;
 
   pluginConfig = config.plugin;
   plugin = require('./plugins/' + pluginConfig.name + '.js');
   constructor = plugin.constructor();
   this.cameraPlugin = new constructor(config.name, pluginConfig.config);
+  this.cameraPlugin.on('frame', function(data) {
+    self.emit('frame', data);
+  });
 
-  const self = this;
   if (controllerEvents) {
     controllerEvents.on('classifiedImg', function(imgBuf) {
       logger.log('debug', "Caching annotated snapshot");
