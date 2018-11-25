@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package camerastreamer;
+
+//import "/protos/camera_processor.proto";
+
+service Camera {
+  rpc registerCamera (CameraConfig) returns (CameraID) {};
+  rpc setMotion (Motion) returns (MotionResults) {};
+}
+
+message CameraConfig {
+  string name = 1;
+  string rtspStream = 2;
+  string cameraCode = 3;
+  string cameraID = 4;
+  string motionCode = 5;
+  string motionID = 6;
+}
+
+message Motion {
+  CameraID camera = 1;
+  bool motion = 2;
+}
+
+message MotionResults {
+  bool success = 1;
+  string errType = 2;
+  string errMessage = 3;
+}
+
+message CameraID {
+  string id = 1;
+}

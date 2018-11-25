@@ -1,0 +1,24 @@
+{
+  "name": "motion-monitor",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "dependencies": {
+    "@grpc/proto-loader": "^0.3.0",
+    "async": "^2.6.0",
+    "find-free-port": "^1.2.0",
+    "google-protobuf": "^3.6.1",
+    "grpc": "^1.16.0",
+    "moment-timezone": "^v0.5.14",
+    "protobufjs": "^6.8.8",
+    "hap-nodejs": "^0.4.41",
+    "node-persist": "^0.0.11",
+    "winston": "^3.0.0-rc1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}
