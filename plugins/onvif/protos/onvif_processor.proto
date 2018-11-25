@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package cameraprocessor;
+
+import "/protos/image.proto";
+
+import "/protos/camera_processor.proto";
+
+service Camera {
+  rpc stream (CameraConfig) returns (stream image.Image) {};
+  rpc snapshot (CameraConfig) returns (image.Image) {};
+}
+
+message CameraConfig {
+  string rtspStream = 1;
+}
