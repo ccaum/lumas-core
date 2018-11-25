@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package plugin;
+
+service Register {
+  rpc register (PluginRegistration) returns (RegisterResult);
+}
+
+message PluginService {
+  string type = 1;
+  string configProtobuf = 2;
+}
+
+message PluginRegistration {
+  string name = 1;
+  int32 grpcPort = 2;
+  string grpcAddress = 3;
+  repeated PluginService pluginServices = 4;
+}
+
+message RegisterResult {
+  bool successful = 1;
+  string errorKind = 2;
+  string message = 3;
+}
