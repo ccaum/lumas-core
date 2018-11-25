@@ -18,7 +18,7 @@ import worker_pb2
 logging.basicConfig(filename='/app/logs/classifier.log', level=logging.DEBUG)
 
 #gRPC configs
-_GRPC_PORT = 50052
+_GRPC_PORT = 50062
 
 # Load the TensorFlow models into memory
 base_path = os.path.dirname(os.path.abspath(__file__))
@@ -31,7 +31,7 @@ net = object_detection.Net(graph_fp='%s/frozen_inference_graph.pb' % model_path,
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 
 def register():
-    channel = grpc.insecure_channel('localhost:50051')
+    channel = grpc.insecure_channel('localhost:50061')
     stub = worker_pb2_grpc.RegisterStub(channel)
     grpc_service = worker_pb2.Service(name = "Image")
     grpc_worker = worker_pb2.Worker(grpcAddress = "localhost", grpcPort = str(_GRPC_PORT))
@@ -120,7 +120,7 @@ class ImageClassification(image_classification_pb2_grpc.ImageClassificationServi
 if __name__ == '__main__':
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=4))
     image_classification_pb2_grpc.add_ImageClassificationServicer_to_server(ImageClassification(), server)
-    server.add_insecure_port('[::]:50052')
+    server.add_insecure_port('[::]:50062')
     server.start()
 
     # Register with the controller that we're ready for work
