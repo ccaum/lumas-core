@@ -16,20 +16,20 @@ module.exports = {
 function HomeKitCamera(camera, homekit_code, homekit_id) {
   const config = {
     name: camera.name,
-    username: camera.cameraPlugin.auth.user,
-    password: camera.cameraPlugin.auth.pass,
-    address: camera.cameraPlugin.address,
+    username: camera.plugin.user,
+    password: camera.plugin.pass,
+    address: camera.plugin.address,
+    streamURL: camera.plugin.streamURL,
     id: homekit_id,
     homekitCode: homekit_code,
     maxStreams: 2
   }
   
   config.getSnapshot = function (callback) {
-    camera.getSnapshot(callback);
+    //camera.getSnapshot(callback);
   }
   
-  config.source =  "-rtsp_transport tcp -re -i rtsp://" + config.username + ":" + config.password + "@" + config.address
-  
+  config.source =  ['-i', config.streamURL]
   config.videoConfig = {
     source: config.source,
     stillImageSource: "-i http://" + config.username + ":" + config.password + "@" + config.address + "/cgi-bin/snapshot.cgi",
@@ -53,8 +53,10 @@ function HomeKitCamera(camera, homekit_code, homekit_id) {
   // Find a free port to run the camera HAP on
   fp(5160, 5199, '0.0.0.0', function(err, freePort) {
     logger.log("info", "Running camera " + config.name + " on port " + freePort);
+    logger.log("info", "HomeKit code is " + config.homekitCode);
   
     // Publish the camera on the local network.
+    console.log("PUBLISHING");
     cameraAccessory.publish({
       username: config.id,
       port: freePort,

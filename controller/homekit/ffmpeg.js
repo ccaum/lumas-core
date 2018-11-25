@@ -224,6 +224,8 @@ FFMPEG.prototype.prepareStream = function(request, callback) {
 }
 
 FFMPEG.prototype.handleStreamRequest = function(request) {
+  const self = this;
+
   var sessionID = request["sessionID"];
   var requestType = request["type"];
   if (sessionID) {
@@ -270,55 +272,57 @@ FFMPEG.prototype.handleStreamRequest = function(request) {
         let audioKey = sessionInfo["audio_srtp"];
         let audioSsrc = sessionInfo["audio_ssrc"];
 
-        let ffmpegCommand = this.ffmpegSource + ' -map 0:0' +
-          ' -vcodec ' + vcodec +
-          ' -pix_fmt yuv420p' +
-          ' -r 10' +
-          ' -f rawvideo -tune zerolatency' +
-          ' -vf scale=' + width + ':' + height +
-          ' -b:v ' + vbitrate + 'k' +
-          ' -bufsize ' + vbitrate + 'k' +
-          ' -payload_type 99' +
-          ' -ssrc ' + videoSsrc +
-          ' -f rtp' +
-          ' -srtp_out_suite AES_CM_128_HMAC_SHA1_80' +
-          ' -srtp_out_params ' + videoKey.toString('base64') +
-          ' srtp://' + targetAddress + ':' + targetVideoPort +
+        let ffmpegCommand = ['-map', '0:0',
+          '-vcodec', vcodec,
+          '-pix_fmt', 'yuv420p',
+          '-r', '10',
+          '-f', 'rawvideo', '-tune', 'zerolatency',
+          '-vf', 'scale=' + width + ':' + height,
+          '-b:v', vbitrate + 'k',
+          '-bufsize', vbitrate + 'k',
+          '-payload_type', '99',
+          '-ssrc', videoSsrc,
+          '-f', 'rtp',
+          '-srtp_out_suite', 'AES_CM_128_HMAC_SHA1_80',
+          '-srtp_out_params', videoKey.toString('base64'),
+          'srtp://' + targetAddress + ':' + targetVideoPort +
           '?rtcpport=' + targetVideoPort +
           '&localrtcpport=' + targetVideoPort +
-          '&pkt_size=' + packetsize;
+          '&pkt_size=' + packetsize];
 
         if(this.audio){
-          ffmpegCommand+= ' -map 0:1' +
-            ' -acodec ' + acodec +
-            ' -profile:a aac_eld' +
-            ' -flags +global_header' +
-            ' -f null' +
-            ' -ar ' + asamplerate + 'k' +
-            ' -b:a ' + abitrate + 'k' +
-            ' -bufsize ' + abitrate + 'k' +
-            ' -ac 1' +
-            ' -payload_type 110' +
-            ' -ssrc ' + audioSsrc +
-            ' -f rtp' +
-            ' -srtp_out_suite AES_CM_128_HMAC_SHA1_80' +
-            ' -srtp_out_params ' + audioKey.toString('base64') +
-            ' srtp://' + targetAddress + ':' + targetAudioPort +
+          ffmpegCommand += ['-map', '0:1',
+            '-acodec', acodec,
+            '-profile:a', 'aac_eld',
+            '-flags', '+global_header',
+            '-f', 'null',
+            '-ar', asamplerate, 'k',
+            '-b:a', abitrate, 'k',
+            '-bufsize', abitrate, 'k',
+            '-ac', '1',
+            '-payload_type', '110',
+            '-ssrc', audioSsrc,
+            '-f', 'rtp',
+            '-srtp_out_suite', 'AES_CM_128_HMAC_SHA1_80',
+            '-srtp_out_params', audioKey.toString('base64'),
+            'srtp://' + targetAddress + ':' + targetAudioPort +
             '?rtcpport=' + targetAudioPort +
             '&localrtcpport=' + targetAudioPort +
-            '&pkt_size=' + packetsize;
+            '&pkt_size=' + packetsize];
         }
+        ffmpegCommand = this.ffmpegSource.concat(ffmpegCommand);
+        console.log(ffmpegCommand.length);
+        console.log(JSON.stringify(ffmpegCommand));
 
-        let ffmpeg = spawn('ffmpeg', ffmpegCommand.split(' '), {env: process.env});
-        this.logger.log("debug", "ffmpeg " + ffmpegCommand);
+        let ffmpeg = spawn('ffmpeg', ffmpegCommand, {env: process.env});
         this.logger.log("info", "Start streaming video from " + this.name + " with " + width + "x" + height + "@" + vbitrate + "kBit");
-        if(this.debug){
-          console.log("ffmpeg " + ffmpegCommand);
-          ffmpeg.stderr.on('data', function(data) {
-            console.log(data.toString());
-          });
-        }
-        let self = this;
+        this.logger.log("debug", "Running ffmpeg with: ffmpeg " + ffmpegCommand.join(' '));
+        ffmpeg.stdout.on('data', function(data) {
+          self.logger.log('debug', data.toString());
+        })
+        ffmpeg.stderr.on('data', function(data) {
+          self.logger.log('debug', data.toString());
+        });
         ffmpeg.on('close', (code) => {
           if(code == null || code == 0 || code == 255){
             self.logger.log("info", "Stopped streaming");
