@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+package image;
+
+message Image {
+  string base64Image = 1;
+}
