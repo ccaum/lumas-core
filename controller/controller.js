@@ -74,23 +74,33 @@ function loadCameras() {
       motion_call.write({
         base64Image: img
       });
+    });
 
-      motion_call.on('data', function(motionResults) {
-        if (motionResults.motionDetected == true) {
-          focusAreas = motionResults.motionAreas
-          classify(img, focusAreas, function(classificationResults) {
-            if (classificationResults['objects']) {
-              classificationResults['objects'].forEach(function(object) {
-                logger.log('debug', "Object recieved: " + JSON.stringify(object));
+    motion_call.on('data', function(motionResults) {
+      if (motionResults.motionDetected == true) {
+        focusAreas = motionResults.motionAreas
+        img = motionResults.image.base64Image
 
-                if (object.objectClass == 'person') {
-                  events.emit('classifiedImg', new Buffer(classificationResults.annotatedImage.base64Image, 'base64'));
-                };
-              });
-            }
-          });
-        }
-      });
+        classify(img, focusAreas, function(classificationResults) {
+          if (classificationResults['objects']) {
+            classificationResults['objects'].forEach(function(object) {
+              logger.log('debug', "Object recieved: " + JSON.stringify(object));
+
+              if (object.objectClass == 'person') {
+                imageBuffer = new Buffer(classificationResults.annotatedImage.base64Image, 'base64');
+                events.emit('classifiedImg', imageBuffer);
+
+                // Write the annotated image to disk for review. Delete later
+                require("fs").writeFile("/app/images/" + new Date() + ".jpg", imageBuffer, 'binary', function(err) {
+                  if (err) {
+                    logger.log('error', err);
+                  }
+                });
+              };
+            });
+          }
+        });
+      }
     });
 
     cameras.push(cam);
