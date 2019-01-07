@@ -81,6 +81,16 @@ class ImageClassification(image_classification_pb2_grpc.ImageClassificationServi
                 # Perform the classification
                 classification_results = self.predict(cropped_area)
 
+                # The resulting object coordinates will be relative to
+                # the area we cropped out, so the coordinates have to be
+                # padded with the original distance from the image's edge
+                # to the cropped area
+                for index, obj in enumerate(classification_results):
+                    classification_results[index]['bb_o'][0] = obj['bb_o'][0] + y
+                    classification_results[index]['bb_o'][1] = obj['bb_o'][1] + x
+                    classification_results[index]['bb_o'][2] = obj['bb_o'][2] + y
+                    classification_results[index]['bb_o'][3] = obj['bb_o'][3] + x
+
                 objects.extend(classification_results)
         else:
             # Perform the classification
