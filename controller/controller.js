@@ -31,6 +31,10 @@ var worker_proto_file = PROTO_DIR + '/worker.proto';
 var worker_definition = protoLoader.loadSync(worker_proto_file, proto_options);
 var worker_proto = grpc.loadPackageDefinition(worker_definition).workers;
 
+var proto_file = PROTO_DIR + '/motion.proto';
+var motion_definition = protoLoader.loadSync(proto_file);
+var motion_proto = grpc.loadPackageDefinition(motion_definition).imageprocessor;
+
 var logger;
 var workers = [];
 var cameras = [];
@@ -55,85 +59,39 @@ function gRPCServer() {
   server.start();
 }
 
-function loadCamera(id, camera, processor) {
-  protoFileName = "/" + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15) + '.proto';
-
-  plugin = processor['plugin'];
-  processor = processor['processor'];
-
-  try {
-    fs.writeFileSync(protoFileName, processor.configProtobuf)
-  } catch (e) {
-    logger.log('error', 'Could not write camera processor ' + camera.plugin.name + ' to file ' + protoFileName + ': ' + e);
-  };
-
-  var camera_config_definition = protoLoader.loadSync(protoFileName);
-  var camera_config_proto = grpc.loadPackageDefinition(camera_config_definition).cameraprocessor;
-
-  //Delete the temp proto file so it's not eating up tmpfs space
-  fs.unlink(protoFileName);
-
-  logger.log('debug', "Setting camera processor at " + plugin.grpcAddress + ":" + plugin.grpcPort);
-  var client = new camera_config_proto.Camera(
-    plugin.grpcAddress + ':' + plugin.grpcPort,
-    grpc.credentials.createInsecure());
+function loadCameras() {
+  let self = this;
+  var motion_rpc = new motion_proto.Motion('localhost:6123', grpc.credentials.createInsecure());
 
 
-  client.camera(camera.plugin.config, function(err, cameraID) {
-    if (err) {
-      logger.log('error', "Could not create camera with processor '" + camera.plugin.name + "'. " +  err.message);
-    }
+  config.cameras.forEach( function(cameraConfig) {
+    var motion_call = motion_rpc.detectMotionStream()
+    var cam = new Camera(cameraConfig, events);
 
-    cameras[id]['processor'] = {cameraID: cameraID.id, plugin: cameraProcessors[camera.plugin.name]};
+    addStream(cam);
 
-    var camera_rpc = new camera_processor_proto.Camera(
-      plugin.grpcAddress + ':' + plugin.grpcPort,
-      grpc.credentials.createInsecure());
+    cam.on('image', function(img) {
+      motion_call.write({
+        base64Image: img
+      });
 
-    logger.log("debug", "Detecting motion");
+      motion_call.on('data', function(results) {
+        if (results.motionDetected == true) {
+          classify(img, function(results) {
+            if (results['objects']) {
+              results['objects'].forEach(function(object) {
+                logger.log('debug', "Object recieved: " + JSON.stringify(object));
 
-    var motion_rpc = new image_classification_proto.ImageClassification(
-      worker.grpcAddress + ':' + worker.grpcPort,
-      grpc.credentials.createInsecure());
-
-    var call = camera_rpc.stream({id: cameraID.id});
-    call.on('data', function(request) {
-      img = request.base64Image;
-
-      classify(img, function(results) {
-        if (results['objects']) {
-          results['objects'].forEach(function(object) {
-            logger.log('debug', "Object recieved: " + JSON.stringify(object));
-
-            if (object.objectClass == 'person') {
-              events.emit('classifiedImg', new Buffer(results.annotatedImage.base64Image, 'base64'));
-            };
+                if (object.objectClass == 'person') {
+                  events.emit('classifiedImg', new Buffer(results.annotatedImage.base64Image, 'base64'));
+                };
+              });
+            }
           });
         }
       });
     });
-  });
-}
 
-function loadCameras() {
-  let self = this;
-  config.cameras.forEach( function(cameraConfig) {
-    cam = new Camera(cameraConfig, events);
-    addStream(cam);
-
-    //cam.on('image', function(img) {
-    //  classify(img, function(results) {
-    //    if (results['objects']) {
-    //      results['objects'].forEach(function(object) {
-    //        logger.log('debug', "Object recieved: " + JSON.stringify(object));
-    //
-    //        if (object.objectClass == 'person') {
-    //          events.emit('classifiedImg', new Buffer(results.annotatedImage.base64Image, 'base64'));
-    //        };
-    //      });
-    //    }
-    //  });
-    //});
 
     cameras.push(cam);
   });
