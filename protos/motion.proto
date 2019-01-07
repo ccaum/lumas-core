@@ -24,4 +24,5 @@ message Images {
 message MotionResults {
   bool motionDetected = 1;
   repeated MotionArea motionAreas = 2;
+  image.Image image = 3;
 }

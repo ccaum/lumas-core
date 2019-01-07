@@ -100,14 +100,18 @@ class Motion(motion_pb2_grpc.MotionServicer):
         results_object.motion = results['motion']
         results_object.motionAreas.extend(results['motionAreas'])
 
+        # Always return the second image since that's the one
+        # the motionArea was calculated for
+        results_object.image.base64Image = base64.b64encode(frame2)
+
         return results_object
 
     def detectMotionStream(self, request_iterator, context):
         prevFrame = None
 
         for image in request_iterator:
-            frame = self.base64ImageToMat(image.base64Image)
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            mat_image = self.base64ImageToMat(image.base64Image)
+            frame = cv2.cvtColor(mat_image, cv2.COLOR_BGR2GRAY)
             frame = cv2.GaussianBlur(frame, (21, 21), 0)
 
             if prevFrame is None:
@@ -122,6 +126,7 @@ class Motion(motion_pb2_grpc.MotionServicer):
             results_object = motion_pb2.MotionResults()
             results_object.motionDetected = results['motion']
             results_object.motionAreas.extend(results['motionAreas'])
+            results_object.image.base64Image = image.base64Image #Return the *original* image
 
             yield results_object
 
