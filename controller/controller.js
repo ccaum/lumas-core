@@ -75,15 +75,16 @@ function loadCameras() {
         base64Image: img
       });
 
-      motion_call.on('data', function(results) {
-        if (results.motionDetected == true) {
-          classify(img, function(results) {
-            if (results['objects']) {
-              results['objects'].forEach(function(object) {
+      motion_call.on('data', function(motionResults) {
+        if (motionResults.motionDetected == true) {
+          focusAreas = motionResults.motionAreas
+          classify(img, focusAreas, function(classificationResults) {
+            if (classificationResults['objects']) {
+              classificationResults['objects'].forEach(function(object) {
                 logger.log('debug', "Object recieved: " + JSON.stringify(object));
 
                 if (object.objectClass == 'person') {
-                  events.emit('classifiedImg', new Buffer(results.annotatedImage.base64Image, 'base64'));
+                  events.emit('classifiedImg', new Buffer(classificationResults.annotatedImage.base64Image, 'base64'));
                 };
               });
             }
@@ -91,7 +92,6 @@ function loadCameras() {
         }
       });
     });
-
 
     cameras.push(cam);
   });
@@ -153,7 +153,7 @@ function onWorker(waitForWorker, callback) {
   }, 0);
 }
 
-function classify(image, callback) {
+function classify(image, focusAreas, callback) {
   onWorker(false, function(worker) {
     logger.log("debug", "Classifying with worker " + worker.grpcAddress);
     var client = new image_classification_proto.ImageClassification(
@@ -164,6 +164,7 @@ function classify(image, callback) {
       image: {
         base64Image: image
       },
+      focusAreas: focusAreas,
       outlineObjects: true,
       classesToOutline: ["person"]
     }

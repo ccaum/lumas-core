@@ -45,6 +45,9 @@ def register():
         return False
 
 class ImageClassification(image_classification_pb2_grpc.ImageClassificationServicer):
+    def predict(self, img):
+        return net.predict(img)
+
     def classify(self, request, context):
 	# Settings for annotating image with outlines of detected objects
 	font = cv2.FONT_HERSHEY_SIMPLEX
@@ -56,21 +59,38 @@ class ImageClassification(image_classification_pb2_grpc.ImageClassificationServi
         outline_objects = request.outlineObjects
         classes_to_outline = request.classesToOutline
         base64_image = request.image.base64Image
+        focus_areas = request.focusAreas
 
         # Decode the base64 string
         img = base64.b64decode(base64_image)
 
+        # Decode the resulting image into something opencv can work with
         data = np.fromstring(img, dtype=np.uint8)
         decoded_img = cv2.imdecode(data, 1)
 
-        # Perform the classification
-        results = net.predict(decoded_img)
+        objects = []
+        # If there are focus areas, crop each one and just classify that area
+        if focus_areas:
+            for area in focus_areas:
+                x = area.x
+                y = area.y
+                h = area.height
+                w = area.width
+                cropped_area = decoded_img[y: y + h, x: x + w]
+
+                # Perform the classification
+                classification_results = self.predict(cropped_area)
+
+                objects.extend(classification_results)
+        else:
+            # Perform the classification
+            objects = net.predict(decoded_img)
 
         classification = image_classification_pb2.Classification()
         classified_objects = []
 
         # Build classification objects based on protobuf definition
-        for obj in results:
+        for obj in objects:
             y1, x1, y2, x2 = obj['bb_o']
             image_size = {'x': obj['img_size'][0], 'y': obj['img_size'][1]}
             score = obj['score']

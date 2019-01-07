@@ -11,10 +11,18 @@ message Image {
   string base64Image = 1;
 }
 
+message FocusArea {
+  int32 x = 1;
+  int32 y = 2;
+  int32 height = 3;
+  int32 width = 4;
+}
+
 message ImageToBeClassified {
   Image image = 1;
   bool outlineObjects = 2;
   repeated string classesToOutline = 3;
+  repeated FocusArea focusAreas = 4;
 }
 
 message Point {
