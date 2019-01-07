@@ -65,7 +65,7 @@ class Motion(motion_pb2_grpc.MotionServicer):
         # loop over the contours
         for c in cnts:
             # if the contour is too small, ignore it
-            if cv2.contourArea(c) < 500:
+            if cv2.contourArea(c) < 3000:
                 continue
 
             # If there's a contour of sufficient size, we have detected motion
@@ -107,7 +107,6 @@ class Motion(motion_pb2_grpc.MotionServicer):
 
         for image in request_iterator:
             frame = self.base64ImageToMat(image.base64Image)
-            frame = imutils.resize(frame, width=500)
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             frame = cv2.GaussianBlur(frame, (21, 21), 0)
 
