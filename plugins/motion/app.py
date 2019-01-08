@@ -50,6 +50,9 @@ class Motion(motion_pb2_grpc.MotionServicer):
         motionAreas = []
         motionDetected = False
 
+        # Image shape
+        height, width = frame2.shape
+
         # compute the absolute difference between the current frame and
         # first frame
         frameDelta = cv2.absdiff(frame1, frame2)
@@ -71,14 +74,21 @@ class Motion(motion_pb2_grpc.MotionServicer):
             # If there's a contour of sufficient size, we have detected motion
             motionDetected = True
 
-            # compute the bounding box for the contour, draw it on the frame,
-            # and update the text
-            (x, y, width, height) = cv2.boundingRect(c)
+            # compute the bounding box for the contour. Pad the contour by 5% on each
+            # side. Often the countor is too narrow to get the full context of the motion
+            (x, y, w, h) = cv2.boundingRect(c)
+            width_padding = int(width*.05)
+            height_padding = int(height*.05)
+            x = x-(width_padding)
+            w = w+(width_padding*2)
+            y = y-(height_padding)
+            h = h+(height_padding*2)
+
             motionArea = motion_pb2.MotionArea()
             motionArea.x = x
             motionArea.y = y
-            motionArea.width = width
-            motionArea.height = height
+            motionArea.width = w
+            motionArea.height = h
             motionAreas.append(motionArea)
 
         return {"motion": motionDetected, "motionAreas": motionAreas}

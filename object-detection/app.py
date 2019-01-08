@@ -71,27 +71,29 @@ class ImageClassification(image_classification_pb2_grpc.ImageClassificationServi
         objects = []
         # If there are focus areas, crop each one and just classify that area
         if focus_areas:
+            # Create a mask that will be used to black out all non-focus areas
+            mask = np.zeros(decoded_img.shape, dtype=np.bool)
+
+            # For each of the focus areas, unmask that area
             for area in focus_areas:
                 x = area.x
                 y = area.y
                 h = area.height
                 w = area.width
-                cropped_area = decoded_img[y: y + h, x: x + w]
+                mask[y: y + h, x: x + w] = True
 
-                # Perform the classification
-                classification_results = self.predict(cropped_area)
+            # Finally, merge the mask and the decoded image so only the focus areas are
+            # are visible
+            masked_img = []
+            if len(decoded_img.shape) == 3 and len(mask.shape) != 3:
+                masked_img = decoded_img * (mask[:,:,None].astype(decoded_img.dtype))
+            elif (len(decoded_img.shape) == 3 and len(mask.shape) == 3) or \
+               (len(decoded_img.shape) == 1 and len(mask.shape) == 1):
+                 masked_img = decoded_img * (mask.astype(decoded_img.dtype))
+            else:
+                raise Exception("Incompatible input and mask dimensions")
 
-                # The resulting object coordinates will be relative to
-                # the area we cropped out, so the coordinates have to be
-                # padded with the original distance from the image's edge
-                # to the cropped area
-                for index, obj in enumerate(classification_results):
-                    classification_results[index]['bb_o'][0] = obj['bb_o'][0] + y
-                    classification_results[index]['bb_o'][1] = obj['bb_o'][1] + x
-                    classification_results[index]['bb_o'][2] = obj['bb_o'][2] + y
-                    classification_results[index]['bb_o'][3] = obj['bb_o'][3] + x
-
-                objects.extend(classification_results)
+            objects = net.predict(masked_img)
         else:
             # Perform the classification
             objects = net.predict(decoded_img)
