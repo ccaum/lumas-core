@@ -35,9 +35,12 @@ ONVIF.prototype.processFeed = function() {
     let ffmpegParams = ['-re', '-rtsp_transport', 'tcp',
       '-i', self.rtspURL,
       '-map', '0:0',
+      '-pix_fmt', 'yuv420p',
+      '-f', 'rawvideo', '-tune', 'zerolatency',
+      '-vf', 'scale=1280:720',
       '-strict', '-2',
       '-c:v', 'mjpeg',
-      '-pix_fmt', 'yuvj422p',
+      '-q:v', '3',
       '-tune', 'zerolatency',
       '-f', 'image2pipe', 
       '-']
