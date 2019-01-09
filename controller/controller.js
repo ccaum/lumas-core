@@ -86,16 +86,17 @@ function loadCameras() {
             classificationResults['objects'].forEach(function(object) {
               logger.log('debug', "Object recieved: " + JSON.stringify(object));
 
+              // Write the annotated image to disk for review. Delete later
+              imageBuffer = new Buffer(classificationResults.annotatedImage.base64Image, 'base64');
+              require("fs").writeFile("/app/images/" + new Date() + ".jpg", imageBuffer, 'binary', function(err) {
+                if (err) {
+                  logger.log('error', err);
+                }
+              });
+
               if (object.objectClass == 'person') {
                 imageBuffer = new Buffer(classificationResults.annotatedImage.base64Image, 'base64');
                 events.emit('classifiedImg', imageBuffer);
-
-                // Write the annotated image to disk for review. Delete later
-                require("fs").writeFile("/app/images/" + new Date() + ".jpg", imageBuffer, 'binary', function(err) {
-                  if (err) {
-                    logger.log('error', err);
-                  }
-                });
               };
             });
           }
@@ -176,7 +177,7 @@ function classify(image, focusAreas, callback) {
       },
       focusAreas: focusAreas,
       outlineObjects: true,
-      classesToOutline: ["person"]
+      //classesToOutline: ["person"]
     }
 
     client.classify(imageToBeClassified, function(err, results) { 
