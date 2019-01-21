@@ -8,6 +8,7 @@ const logConfig = require('./logger.js').config;
 const Camera = require('./camera');
 const { startFFSERVER, addStream } = require('./ffserver');
 const { Config } = require('./config.js');
+const { Event, saveImage} = require('./events.js');
 
 if (fs.existsSync('/protos')) {
   PROTO_DIR = '/protos';
@@ -31,8 +32,8 @@ var worker_proto_file = PROTO_DIR + '/worker.proto';
 var worker_definition = protoLoader.loadSync(worker_proto_file, proto_options);
 var worker_proto = grpc.loadPackageDefinition(worker_definition).workers;
 
-var proto_file = PROTO_DIR + '/motion.proto';
-var motion_definition = protoLoader.loadSync(proto_file);
+var motion_proto_file = PROTO_DIR + '/motion.proto';
+var motion_definition = protoLoader.loadSync(motion_proto_file);
 var motion_proto = grpc.loadPackageDefinition(motion_definition).imageprocessor;
 
 var logger;
@@ -70,7 +71,7 @@ function loadCameras() {
 
     addStream(cam);
 
-    cam.on('image', function(img) {
+    cam.on('image', function(imgID) {
       motion_call.write({
         base64Image: img
       });
@@ -78,26 +79,51 @@ function loadCameras() {
 
     motion_call.on('data', function(motionResults) {
       if (motionResults.motionDetected == true) {
+        img = new Buffer(motionResults.image.base64Image, 'base64');
+
+        saveImage(img, function(err, imgID) {
+          if (err) {
+            logger.log('error', err)
+            return;
+          }
+
+          Event.create({
+            tenantID: 1,
+            frameID: imgID,
+            type: 'motion',
+            cameraID: cam.id,
+            parameters: {
+              focus_areas: motionResults.motionAreas,
+            }
+          });
+        });
+
         focusAreas = motionResults.motionAreas
         img = motionResults.image.base64Image
 
         classify(img, focusAreas, function(classificationResults) {
           if (classificationResults['objects']) {
-            classificationResults['objects'].forEach(function(object) {
-              logger.log('debug', "Object recieved: " + JSON.stringify(object));
+            img = new Buffer(classificationResults.annotatedImage.base64Image, 'base64');
 
-              // Write the annotated image to disk for review. Delete later
-              imageBuffer = new Buffer(classificationResults.annotatedImage.base64Image, 'base64');
-              require("fs").writeFile("/app/images/" + new Date() + ".jpg", imageBuffer, 'binary', function(err) {
-                if (err) {
-                  logger.log('error', err);
-                }
+            saveImage(img, function(err, imgID) {
+              if (err) {
+                logger.log('error', err)
+                return;
+              }
+
+              classificationResults['objects'].forEach(function(object) {
+                logger.log('debug', "Object recieved: " + JSON.stringify(object));
+
+                Event.create({
+                  tenantID: 1,
+                  frameID: imgID,
+                  type: 'classification',
+                  cameraID: cam.id,
+                  parameters: {
+                    object: object
+                  }
+                });
               });
-
-              if (object.objectClass == 'person') {
-                imageBuffer = new Buffer(classificationResults.annotatedImage.base64Image, 'base64');
-                events.emit('classifiedImg', imageBuffer);
-              };
             });
           }
         });
