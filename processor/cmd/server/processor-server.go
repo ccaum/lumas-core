@@ -78,17 +78,17 @@ func main() {
       }
 
       //Now that we've processed the motion, we can free the frames from memory
-      motion.Frame.Free()
+      //motion.Frame.Free()
     }
   }()
 
-  i := 0
+  //i := 0
 	for packet := range inputCtx.GetNewPackets() {
-    if i == 1000 {
-      fmt.Println("breaking")
-      break
-    }
-    i++
+    //if i == 1000 {
+    //  fmt.Println("breaking")
+    //  break
+    //}
+    //i++
 
     if packet.StreamIndex() == srcVideoStream.Index() {
 

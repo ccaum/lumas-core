@@ -3,7 +3,7 @@ package processor
 import (
   "fmt"
   "image"
-  //"strconv"
+  "image/color"
 	. "github.com/3d0c/gmf"
   "gocv.io/x/gocv"
 )
@@ -20,22 +20,14 @@ type Motion struct {
 
 func DetectMotion(frames <-chan *Frame, result chan<- *Motion, srcCodecCtx *CodecCtx, timeBase AVR) {
 
-  window := gocv.NewWindow("Motion Window")
-  defer window.Close()
-
   prevFrame := gocv.NewMat()
   defer prevFrame.Close()
+
   curFrame  := gocv.NewMat()
   defer curFrame.Close()
 
   height := srcCodecCtx.Height()
   width  := srcCodecCtx.Width()
-
-  frameDelta := gocv.NewMat()
-  defer frameDelta.Close()
-
-  thresh := gocv.NewMat()
-  defer thresh.Close()
 
   for frame := range frames {
     if prevFrame.Empty() {
@@ -45,6 +37,7 @@ func DetectMotion(frames <-chan *Frame, result chan<- *Motion, srcCodecCtx *Code
         fmt.Println("Could not convert frame to MAT")
       }
       retCopy := *ret
+      //Finding contours can only work with grayscale images
       gocv.CvtColor(retCopy, &prevFrame, gocv.ColorBGRToGray)
 
       continue
@@ -54,11 +47,18 @@ func DetectMotion(frames <-chan *Frame, result chan<- *Motion, srcCodecCtx *Code
         fmt.Println("Could not convert frame to MAT")
       }
       retCopy := *ret
+      //Finding contours can only work with grayscale images
       gocv.CvtColor(retCopy, &curFrame, gocv.ColorBGRToGray)
     }
 
+    frameDelta := gocv.NewMat()
+    defer frameDelta.Close()
+
+    thresh := gocv.NewMat()
+    defer thresh.Close()
+
     gocv.AbsDiff(prevFrame, curFrame, &frameDelta)
-    gocv.Threshold(frameDelta, &thresh, 3, 255, gocv.ThresholdBinary)
+    gocv.Threshold(frameDelta, &thresh, 50, 255, gocv.ThresholdBinary)
 
     kernel := gocv.GetStructuringElement(gocv.MorphRect, image.Pt(3, 3))
 		defer kernel.Close()
@@ -100,11 +100,7 @@ func DetectMotion(frames <-chan *Frame, result chan<- *Motion, srcCodecCtx *Code
       motion.Frame = frame
     }
 
-    window.IMShow(curFrame)
-    if window.WaitKey(1) == 27 {
-			break
-		}
-    prevFrame = curFrame
+    prevFrame.CopyTo(&prevFrame)
 
     //Return our results to the channel
     result <- motion
