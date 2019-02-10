@@ -1,11 +1,9 @@
 package main
 
 import (
-  //"strconv"
 	"fmt"
 	"log"
 	"os"
-	//"sync"
   "runtime/debug"
 
 	. "github.com/3d0c/gmf"
@@ -76,11 +74,11 @@ func main() {
   go func() {
     for motion := range motionChan {
       if motion.MotionDetected {
-        //fmt.Println("Found some motion")
+        fmt.Println("Found some motion")
       }
 
       //Now that we've processed the motion, we can free the frames from memory
-      //motion.Frame.Free()
+      motion.Frame.Free()
     }
   }()
 
@@ -92,8 +90,7 @@ func main() {
     }
     i++
 
-
-    if packet.StreamIndex() != srcVideoStream.Index() {
+    if packet.StreamIndex() == srcVideoStream.Index() {
 
 		  ist := assert(inputCtx.GetStream(packet.StreamIndex())).(*Stream)
 
@@ -102,7 +99,7 @@ func main() {
         fmt.Println("error :(")
         // Retry if EAGAIN
         if err.Error() == "Resource temporarily unavailable" {
-          //Do nothing
+          continue
         }
         log.Fatal(err)
       }

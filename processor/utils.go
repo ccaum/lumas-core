@@ -3,9 +3,9 @@ package processor
 /*
 #cgo pkg-config: libavformat libavcodec
 
+#include <stdlib.h>
 #include "libswscale/swscale.h"
 #include "libavcodec/avcodec.h"
-
 */
 import "C"
 
@@ -26,7 +26,6 @@ func isMatEqualSize(frame1Mat *gocv.Mat, frame2Mat *gocv.Mat) bool {
   return true
 }
 
-//func frameToMat(frame *gmf.Frame, out chan<- *gocv.Mat, srcCodecCtx *gmf.CodecCtx, timeBase gmf.AVR) {
 func frameToMat(frame *gmf.Frame, srcCodecCtx *gmf.CodecCtx, timeBase gmf.AVR) (*gocv.Mat, error) {
   w := srcCodecCtx.Width()
   h := srcCodecCtx.Height()
@@ -63,20 +62,14 @@ func frameToMat(frame *gmf.Frame, srcCodecCtx *gmf.CodecCtx, timeBase gmf.AVR) (
 		return nil, err
 	}
 
-  //frameBGR, err := swsCtx.Scale2(frame)
   swsCtx.Scale(frame, dstFrame)
-  //frameBGR.SetWidth(srcCodecCtx.Width()).
-  //  SetHeight(srcCodecCtx.Height()).
-  //  SetFormat(gmf.AV_PIX_FMT_RGB24)
   p, err := dstFrame.Encode(cc)
   if (err != nil) {
 	  gmf.Release(frame)
     return nil, err
   }
-  //gmf.Release(frame)
 
-  mat, err := gocv.NewMatFromBytes(h, w, gocv.MatTypeCV8UC1, p.Data())
-  //mat, err := gocv.IMDecode(p.Data(), 1)
+  mat, err := gocv.IMDecode(p.Data(), 1)
   if err != nil {
     return nil, err
   }
