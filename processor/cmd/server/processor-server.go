@@ -67,7 +67,7 @@ func main() {
 
   motions := make(chan *Motion, 100)
   defer close(motions)
-  frames  := make(chan Frame, 100)
+  frames  := make(chan *Frame, 100)
   defer close(frames)
   packets := make(chan *Packet, 100)
   defer close(packets)
@@ -79,8 +79,12 @@ func main() {
 
   go func() {
     for motion := range motions {
-      fmt.Println("found motion in frame ")
-      fmt.Println(motion.FramePktPts)
+      if motion.MotionDetected {
+        fmt.Println("found motion in frame ")
+        fmt.Println(motion.FramePktPts)
+      } else {
+        fmt.Println("no motion")
+      }
     }
   }()
 
@@ -95,13 +99,13 @@ func main() {
 		ist := assert(inputCtx.GetStream(packet.StreamIndex())).(*Stream)
 
     frame, err := packet.Frames(ist.CodecCtx())
-    defer frame.Free()
     if err != nil {
       //fmt.Println("error: " + err.Error())
       continue
     }
 
-    fcopy  := *frame
+    fcopy := frame.CloneNewFrame()
+    frame.Free()
     frames <- fcopy
   }
 }

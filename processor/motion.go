@@ -3,6 +3,7 @@ package processor
 import (
   "fmt"
   "image"
+  "image/color"
 	. "github.com/3d0c/gmf"
   "gocv.io/x/gocv"
 )
@@ -17,7 +18,10 @@ type Motion struct {
   MotionAreas []image.Rectangle
 }
 
-func DetectMotion(frames <-chan Frame, results chan<- *Motion, srcCodecCtx *CodecCtx, timeBase AVR) {
+func DetectMotion(frames <-chan *Frame, results chan<- *Motion, srcCodecCtx *CodecCtx, timeBase AVR) {
+
+  window := gocv.NewWindow("Motion Window")
+  defer window.Close()
 
   prevFrame := gocv.NewMat()
   defer prevFrame.Close()
@@ -29,9 +33,11 @@ func DetectMotion(frames <-chan Frame, results chan<- *Motion, srcCodecCtx *Code
   width  := srcCodecCtx.Width()
 
   for frame := range frames {
+    defer frame.Free()
+
     if prevFrame.Empty() {
       var err error
-      ret, err := frameToMat(&frame, srcCodecCtx, timeBase)
+      ret, err := frameToMat(frame, srcCodecCtx, timeBase)
       if (err != nil) {
         fmt.Println("Could not convert frame to MAT")
       }
@@ -41,7 +47,7 @@ func DetectMotion(frames <-chan Frame, results chan<- *Motion, srcCodecCtx *Code
 
       continue
     } else {
-      ret, err := frameToMat(&frame, srcCodecCtx, timeBase)
+      ret, err := frameToMat(frame, srcCodecCtx, timeBase)
       if (err != nil) {
         fmt.Println("Could not convert frame to MAT")
       }
@@ -57,7 +63,7 @@ func DetectMotion(frames <-chan Frame, results chan<- *Motion, srcCodecCtx *Code
     defer thresh.Close()
 
     gocv.AbsDiff(prevFrame, curFrame, &frameDelta)
-    gocv.Threshold(frameDelta, &thresh, 50, 255, gocv.ThresholdBinary)
+    gocv.Threshold(frameDelta, &thresh, 25, 255, gocv.ThresholdBinary)
 
     kernel := gocv.GetStructuringElement(gocv.MorphRect, image.Pt(3, 3))
 		defer kernel.Close()
@@ -67,8 +73,11 @@ func DetectMotion(frames <-chan Frame, results chan<- *Motion, srcCodecCtx *Code
     motion.MotionDetected = false
     motion.FramePktPts = frame.PktPts()
 
+    img := gocv.NewMat()
+    curFrame.CopyTo(&img)
+
     contours := gocv.FindContours(thresh, gocv.RetrievalExternal, gocv.ChainApproxSimple)
-		for _, c := range contours {
+		for i, c := range contours {
 	    area := gocv.ContourArea(c)
       if area < MinimumArea {
         continue
@@ -93,8 +102,17 @@ func DetectMotion(frames <-chan Frame, results chan<- *Motion, srcCodecCtx *Code
 
       rectangle := image.Rect(x, y, x+w, y+h)
 
+      statusColor := color.RGBA{255, 0, 0, 0}
+      gocv.DrawContours(&img, contours, i, statusColor, 2)
+      gocv.Rectangle(&img, rect, color.RGBA{0, 0, 255, 0}, 2)
+
       motion.MotionAreas = append(motion.MotionAreas, rectangle)
 	  }
+
+    window.IMShow(img)
+    if window.WaitKey(100) == 27 {
+      break
+    }
 
     curFrame.CopyTo(&prevFrame)
 
