@@ -69,7 +69,7 @@ func main() {
   defer close(motions)
   frames  := make(chan *Frame, 100)
   defer close(frames)
-  packets := make(chan *Packet, 100)
+  packets := make(chan *Packet, 10)
   defer close(packets)
 
   //Write the packets to disk concurrently
@@ -89,7 +89,7 @@ func main() {
   }()
 
 	for packet := range inputCtx.GetNewPackets() {
-    packets <- packet
+    //packets <- packet
 
     if packet.StreamIndex() != srcVideoStream.Index() {
       //It's an audio packet
@@ -105,7 +105,9 @@ func main() {
     }
 
     fcopy := frame.CloneNewFrame()
+    //fmt.Println(fcopy)
     frame.Free()
+
     frames <- fcopy
   }
 }

@@ -38,43 +38,33 @@ func frameToMat(frame *gmf.Frame, srcCodecCtx *gmf.CodecCtx, timeBase gmf.AVR) (
   cc := gmf.NewCodecCtx(codec)
 	defer gmf.Release(cc)
 
-  cc.SetPixFmt(C.AV_PIX_FMT_RGB24).SetWidth(w).SetHeight(h).SetTimeBase(timeBase)
+  cc.SetPixFmt(C.AV_PIX_FMT_GRAY8).SetWidth(w).SetHeight(h).SetTimeBase(timeBase)
 
   if codec.IsExperimental() {
 		cc.SetStrictCompliance(gmf.FF_COMPLIANCE_EXPERIMENTAL)
 	}
 
 	if err := cc.Open(nil); err != nil {
-    return nil, err
+    rmat := gocv.NewMat()
+    defer rmat.Close()
+    return &rmat, err
 	}
 
-	swsCtx := gmf.NewSwsCtx(srcCodecCtx, cc, gmf.SWS_BICUBIC)
-	defer swsCtx.Free()
-
-  // convert to RGB, optionally resize could be here
-	dstFrame := gmf.NewFrame().
-		SetWidth(w).
-		SetHeight(h).
-		SetFormat(gmf.AV_PIX_FMT_RGB24)
-	defer gmf.Release(dstFrame)
-
-  if err := dstFrame.ImgAlloc(); err != nil {
-		return nil, err
-	}
-
-  swsCtx.Scale(frame, dstFrame)
-  p, err := dstFrame.Encode(cc)
+  pkt, err := frame.Encode(cc)
   if (err != nil) {
-	  gmf.Release(frame)
-    return nil, err
+    rmat := gocv.NewMat()
+    defer rmat.Close()
+    return &rmat, err
   }
 
-  mat, err := gocv.IMDecode(p.Data(), 1)
-  if err != nil {
-    return nil, err
+  mat, err := gocv.IMDecode(pkt.Data(), 1)
+  if (err != nil) {
+    rmat := gocv.NewMat()
+    defer rmat.Close()
+    return &rmat, err
   }
 
-  return &mat, nil
+  return &mat, err
 }
 
 func fatal(err error) {
