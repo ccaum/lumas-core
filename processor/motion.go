@@ -17,7 +17,7 @@ type Motion struct {
   MotionAreas []image.Rectangle
 }
 
-func DetectMotion(frame *Frame, srcCodecCtx *CodecCtx, timeBase AVR) (*Motion, error) {
+func DetectMotion(frames <-chan Frame, results chan<- *Motion, srcCodecCtx *CodecCtx, timeBase AVR) {
 
   prevFrame := gocv.NewMat()
   defer prevFrame.Close()
@@ -96,9 +96,9 @@ func DetectMotion(frame *Frame, srcCodecCtx *CodecCtx, timeBase AVR) (*Motion, e
       motion.MotionAreas = append(motion.MotionAreas, rectangle)
 	  }
 
-    prevFrame.CopyTo(&prevFrame)
+    curFrame.CopyTo(&prevFrame)
 
     //Return our results to the channel
-    result <- motion
+    results <- motion
   }
 }

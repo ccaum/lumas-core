@@ -23,6 +23,17 @@ func assert(i interface{}, err error) interface{} {
 	return i
 }
 
+func addStreams(inputCtx *FmtCtx, outputCtx *FmtCtx) {
+	for i := 0; i < inputCtx.StreamsCnt(); i++ {
+		srcStream, err := inputCtx.GetStream(i)
+		if err != nil {
+			fmt.Println("GetStream error")
+		}
+
+		outputCtx.AddStreamWithCodeCtx(srcStream.CodecCtx())
+	}
+}
+
 func main() {
   var srcFileName, dstFileName string
 
@@ -46,78 +57,51 @@ func main() {
 	outputCtx := assert(NewOutputCtxWithFormatName(dstFileName, "mpegts")).(*FmtCtx)
 	defer outputCtx.CloseOutputAndRelease()
   outputCtx.SetStartTime(0)
-
-	for i := 0; i < inputCtx.StreamsCnt(); i++ {
-		srcStream, err := inputCtx.GetStream(i)
-		if err != nil {
-			fmt.Println("GetStream error")
-		}
-
-		outputCtx.AddStreamWithCodeCtx(srcStream.CodecCtx())
-	}
+  addStreams(inputCtx, outputCtx)
 	outputCtx.Dump()
-
-	if err := outputCtx.WriteHeader(); err != nil {
-		fatal(err)
-	}
 
 	srcVideoStream, err := inputCtx.GetBestStream(AVMEDIA_TYPE_VIDEO)
 	if err != nil {
 		log.Println("No video stream found in", srcFileName)
 	}
 
-  motionChan  := make(chan *Motion)
-  motionFrame := make(chan *Frame, 2)
+  motions := make(chan *Motion, 100)
+  defer close(motions)
+  frames  := make(chan Frame, 100)
+  defer close(frames)
+  packets := make(chan *Packet, 100)
+  defer close(packets)
 
-  go DetectMotion(motionFrame, motionChan, srcVideoStream.CodecCtx(), srcVideoStream.TimeBase().AVR())
+  //Write the packets to disk concurrently
+  go WriteFile(packets, outputCtx)
+
+  go DetectMotion(frames, motions, srcVideoStream.CodecCtx(), srcVideoStream.TimeBase().AVR())
 
   go func() {
-    for motion := range motionChan {
-      if motion.MotionDetected {
-        fmt.Println("Found some motion")
-      }
-
-      //Now that we've processed the motion, we can free the frames from memory
-      //motion.Frame.Free()
+    for motion := range motions {
+      fmt.Println("found motion in frame ")
+      fmt.Println(motion.FramePktPts)
     }
   }()
 
-  //i := 0
 	for packet := range inputCtx.GetNewPackets() {
-    //if i == 1000 {
-    //  fmt.Println("breaking")
-    //  break
-    //}
-    //i++
+    packets <- packet
 
-    if packet.StreamIndex() == srcVideoStream.Index() {
-
-		  ist := assert(inputCtx.GetStream(packet.StreamIndex())).(*Stream)
-
-      frame, err := packet.Frames(ist.CodecCtx())
-      if err != nil {
-        fmt.Println("error :(")
-        // Retry if EAGAIN
-        if err.Error() == "Resource temporarily unavailable" {
-          continue
-        }
-        log.Fatal(err)
-      }
-
-      motionFrame <- frame
+    if packet.StreamIndex() != srcVideoStream.Index() {
+      //It's an audio packet
+      continue
     }
 
-    //Write the packet to a file
-	  if err := outputCtx.WritePacket(packet); err != nil {
-	    fatal(err)
-	  }
+		ist := assert(inputCtx.GetStream(packet.StreamIndex())).(*Stream)
 
-	  packet.Free()
+    frame, err := packet.Frames(ist.CodecCtx())
+    defer frame.Free()
+    if err != nil {
+      //fmt.Println("error: " + err.Error())
+      continue
+    }
+
+    fcopy  := *frame
+    frames <- fcopy
   }
-
-  outputCtx.Free()
-  close(motionChan)
-  close(motionFrame)
-
-  //wg.Wait()
 }
