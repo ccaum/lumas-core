@@ -67,6 +67,14 @@ func frameToMat(frame *gmf.Frame, srcCodecCtx *gmf.CodecCtx, timeBase gmf.AVR) (
   return &mat, err
 }
 
+func matToBW(mat *gocv.Mat) {
+  cvtMat := gocv.NewMat()
+  defer cvtMat.Close()
+
+  mat.CopyTo(&cvtMat)
+  gocv.CvtColor(cvtMat, mat, gocv.ColorBGRToGray)
+}
+
 func fatal(err error) {
 	debug.PrintStack()
 	log.Fatal(err)

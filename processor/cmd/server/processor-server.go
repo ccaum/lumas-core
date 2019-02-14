@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+  "time"
   "runtime/debug"
 
 	. "github.com/3d0c/gmf"
@@ -65,25 +66,32 @@ func main() {
 		log.Println("No video stream found in", srcFileName)
 	}
 
-  motions := make(chan *Motion, 100)
-  defer close(motions)
   frames  := make(chan *Frame, 100)
   defer close(frames)
+  doneFrames := make(chan *Frame, 100)
+  defer close(doneFrames)
+  motions := make(chan *Motion, 100)
+  defer close(motions)
   packets := make(chan *Packet, 10)
   defer close(packets)
+
+  // When frames are done being processed, they're sent to the
+  // to the doneFrames channel so they can be freed from memory
+  go func() {
+    for frame := range doneFrames {
+      frame.Free()
+    }
+  }()
 
   //Write the packets to disk concurrently
   go WriteFile(packets, outputCtx)
 
-  go DetectMotion(frames, motions, srcVideoStream.CodecCtx(), srcVideoStream.TimeBase().AVR())
+  go DetectMotion(frames, doneFrames, motions, srcVideoStream.CodecCtx(), srcVideoStream.TimeBase().AVR())
 
   go func() {
     for motion := range motions {
       if motion.MotionDetected {
         fmt.Println("found motion in frame ")
-        fmt.Println(motion.FramePktPts)
-      } else {
-        fmt.Println("no motion")
       }
     }
   }()
@@ -100,14 +108,12 @@ func main() {
 
     frame, err := packet.Frames(ist.CodecCtx())
     if err != nil {
-      //fmt.Println("error: " + err.Error())
+      fmt.Println("error: " + err.Error())
       continue
     }
 
-    fcopy := frame.CloneNewFrame()
-    //fmt.Println(fcopy)
-    frame.Free()
-
-    frames <- fcopy
+    frames <- frame
   }
+
+  time.Sleep(time.Duration(40) * time.Second)
 }
